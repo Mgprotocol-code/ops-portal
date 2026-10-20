@@ -1,0 +1,52 @@
+# Converts uploaded Excel files and publishes the portal on GitHub Pages.
+# Runs on every push to main (for example when the team uploads an Excel into uploads/).
+name: Update portal
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: portal
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Convert uploaded Excel (keeps last 7 days)
+        run: |
+          pip install openpyxl
+          python scripts/convert.py
+
+      - name: Save converted data
+        run: |
+          git config user.name "portal-bot"
+          git config user.email "portal-bot@users.noreply.github.com"
+          git add -A data uploads
+          if ! git diff --cached --quiet; then
+            git commit -m "Daily upload processed"
+            git push
+          fi
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - id: deployment
+        uses: actions/deploy-pages@v4
