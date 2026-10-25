@@ -1,11 +1,31 @@
 {
- "status": "ok",
- "file": "Operation_Daily_Report_(24-Oct-2026).xlsx",
- "at": "2026-10-24T06:04:15+00:00",
- "report_date": "2026-10-24",
- "replaced": false,
- "removed": [
-  "2026-10-17"
+ "status": "error",
+ "file": "Operation_Daily_Report (25-Oct-2026).xlsx",
+ "at": "2026-10-25T03:58:48+00:00",
+ "report_date": "2026-10-25",
+ "errors": [
+  "Fleet by team row 5: “Priority” is empty.",
+  "Fleet by team row 6: “Priority” is empty.",
+  "Fleet by team row 7: “Priority” is empty.",
+  "Fleet by team row 8: “Priority” is empty.",
+  "Fleet by team row 11: “Priority” is empty.",
+  "Fleet by team row 14: “Priority” is empty.",
+  "Fleet by team row 19: “Priority” is empty.",
+  "Fleet by team row 22: “Priority” is empty.",
+  "Fleet by team row 23: “Priority” is empty.",
+  "Fleet by team row 24: “Priority” is empty.",
+  "Fleet by team row 25: “Priority” is empty.",
+  "Fleet by team row 26: “Priority” is empty."
  ],
- "warnings": []
+ "warnings": [
+  "Fleet by team row 9: total row skipped – the portal adds totals itself.",
+  "Fleet by team row 12: total row skipped – the portal adds totals itself.",
+  "Fleet by team row 15: total row skipped – the portal adds totals itself.",
+  "Fleet by team row 17: total row skipped – the portal adds totals itself.",
+  "Fleet by team row 20: total row skipped – the portal adds totals itself.",
+  "Fleet by team row 27: total row skipped – the portal adds totals itself.",
+  "Cable works: no rows filled.",
+  "Box-Ops row 16: total row skipped – the portal adds totals itself.",
+  "Box-Ops row 17: total row skipped – the portal adds totals itself."
+ ]
 }
