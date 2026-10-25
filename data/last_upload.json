@@ -1,16 +1,12 @@
 {
  "status": "ok",
  "file": "Operation_Daily_Report (25-Oct-2026).xlsx",
- "at": "2026-10-25T04:05:07+00:00",
+ "at": "2026-10-25T04:14:36+00:00",
  "report_date": "2026-10-25",
- "replaced": false,
- "removed": [
-  "2026-10-18"
- ],
+ "replaced": true,
+ "removed": [],
  "warnings": [
   "Cable works: no rows filled.",
-  "Box-Ops row 16: total row skipped – the portal adds totals itself.",
-  "Box-Ops row 17: total row skipped – the portal adds totals itself.",
   "Fleet notes: item “Driver leave / site cancel” not found – keep the item names as in the template."
  ]
 }
