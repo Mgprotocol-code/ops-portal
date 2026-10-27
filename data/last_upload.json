@@ -1,11 +1,11 @@
 {
  "status": "ok",
- "file": "Operation_Daily_Report (26-Oct-2026).xlsx",
- "at": "2026-10-26T04:07:48+00:00",
- "report_date": "2026-10-26",
+ "file": "Operation_Daily_Report (27-Oct-2026).xlsx",
+ "at": "2026-10-27T04:13:24+00:00",
+ "report_date": "2026-10-27",
  "replaced": false,
  "removed": [
-  "2026-10-19"
+  "2026-10-20"
  ],
  "warnings": [
   "Cable works: no rows filled.",
