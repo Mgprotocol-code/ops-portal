@@ -1,366 +1,1267 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Impl-Ops</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗂️</text></svg>">
-<link rel="preconnect" href="https://uemxuinndpaazwxayecv.supabase.co" crossorigin><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-<script>
-/* ===================== SETTINGS — edit only this part ===================== */
-const CONFIG = {
-  title: "Impl-Ops",
-  subtitle: "All work portals in one place",
-  // Paste your Supabase details here (keep the quote marks).
-  // Leave empty to use "this browser only" mode.
-  SUPABASE_URL: "https://uemxuinndpaazwxayecv.supabase.co",
-  SUPABASE_KEY: "sb_publishable_OLHjd18Q8zjcOgr-wPMjWA_w0f0huZf",  // the publishable / anon public key — never the secret key
-  // The email of the editor account you create in Supabase (Authentication → Users).
-  EDITOR_EMAIL: "mgprotocol@gmail.com"
-};
-// Edit password before Supabase is connected (stored scrambled, not as plain text).
-const EDIT_PASSWORD_HASH = "08ed1a9b5d8bc74260aa6df48e5e4c4f1e0e81db1e33606553eeae22d65e39e6";
-/* ========================================================================== */
-</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Operation Daily Planning</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚐</text></svg>">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
 <style>
+/* ---- theme tokens (light / dark) ---- */
 :root{
-  --bg:#EAEFF2;--surface:#FFFFFF;--ink:#16304A;--muted:#5B6D7D;--line:#D2DAE0;
-  --rail:#16304A;--rail-ink:#DCE7EF;--fiber:#0D7C87;--fiber-soft:#D6EEF0;
-  --amber:#B86E00;--amber-soft:#FBEBD2;--fault:#B3392D;--fault-soft:#F8DEDA;
-  --sans:'Barlow',system-ui,'Segoe UI','Myanmar Text','Padauk',sans-serif;
-  --cond:'Barlow Condensed','Arial Narrow',system-ui,sans-serif;
+  --font-anthropic-sans: system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans","Noto Sans Myanmar","Myanmar Text",Padauk,Arial,sans-serif;
+  --font-anthropic-serif: Georgia,"Times New Roman",serif;
+  --cds-font-size-title:1.6rem; --cds-font-size-heading:1.05rem; --cds-font-size-body:.92rem; --cds-font-size-caption:.8rem;
+  --cds-font-weight-medium:600;
+  --cds-gap-xs:.3rem; --cds-gap-sm:.5rem; --cds-gap-md:.85rem; --cds-gap-lg:1.25rem;
+  --cds-pad-xs:.3rem; --cds-pad-sm:.5rem; --cds-pad-md:.75rem; --cds-pad-lg:1rem;
+  --cds-radius:10px; --cds-dur-slow:.3s;
+  --color-bg:#f6f7f9; --color-panel:#ffffff; --color-fg:#1c1f24; --color-fg-muted:#5f6670; --color-border-line:#e1e4e8;
+  --color-ok:#15803d; --color-warn:#b45309; --color-bad:#c2410c;
+  --cds-chart-muted:#e3e6ea; --cds-surface-popover:#ffffff; --cds-border:#d5d9de; --cds-shadow-popover:0 6px 20px rgba(0,0,0,.12); --cds-text-secondary:#5f6670;
   color-scheme:light;
 }
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#0F1A24;--surface:#16232F;--ink:#E3ECF2;--muted:#93A6B6;--line:#2A3A48;
-  --rail:#0B141C;--rail-ink:#C9D7E2;--fiber:#3FB6C1;--fiber-soft:#133A40;
-  --amber:#E6A23C;--amber-soft:#3A2C14;--fault:#E3746A;--fault-soft:#3D1F1C;color-scheme:dark}}
-:root[data-theme="dark"]{
-  --bg:#0F1A24;--surface:#16232F;--ink:#E3ECF2;--muted:#93A6B6;--line:#2A3A48;
-  --rail:#0B141C;--rail-ink:#C9D7E2;--fiber:#3FB6C1;--fiber-soft:#133A40;
-  --amber:#E6A23C;--amber-soft:#3A2C14;--fault:#E3746A;--fault-soft:#3D1F1C;color-scheme:dark}
-:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-*,*::before,*::after{box-sizing:inherit}
-html{scroll-padding-top:env(safe-area-inset-top,0px)}
-body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 var(--sans)}
-button,input,select,textarea{font:inherit;color:inherit}
-:focus-visible{outline:3px solid var(--fiber);outline-offset:2px}
-
-/* Header rail */
-.rail{background:var(--rail);color:var(--rail-ink)}
-.rail-in{max-width:1080px;margin:0 auto;padding:28px 20px 24px;display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;justify-content:space-between}
-.rail h1{margin:0;font:700 clamp(2.2rem,6vw,3.4rem)/1 var(--cond);letter-spacing:-.01em;color:#fff}
-.rail p{margin:6px 0 0;color:var(--rail-ink);opacity:.8}
-.rail-actions{display:flex;gap:8px;flex-wrap:wrap}
-.btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:9px 16px;border-radius:8px;cursor:pointer;font-weight:600}
-.btn:hover{border-color:var(--fiber)}
-.btn.primary{background:var(--fiber);border-color:var(--fiber);color:#fff}
-.btn.ghost{background:transparent;color:var(--rail-ink);border-color:rgba(220,231,239,.35)}
-.btn.ghost:hover{border-color:var(--rail-ink)}
-.btn.danger{color:var(--fault);border-color:var(--fault)}
-
-main{max-width:1080px;margin:0 auto;padding:20px 20px 60px}
-.notice{background:var(--amber-soft);color:var(--ink);border-left:4px solid var(--amber);padding:10px 14px;border-radius:6px;margin-bottom:18px;font-size:.95rem}
-.toolbar{display:flex;gap:10px;margin-bottom:22px}
-.search{flex:1;min-width:0;padding:11px 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
-
-/* Portal groups */
-.group{margin-bottom:30px}
-.group h2{font:600 1.35rem/1.2 var(--cond);margin:0 0 10px;color:var(--muted);display:flex;gap:10px;align-items:baseline}
-.group h2 span{font:500 .9rem var(--sans)}
-.list{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
-.portal{position:relative;display:flex;gap:14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-left:6px solid var(--c,var(--fiber));border-radius:8px;padding:14px 16px;text-decoration:none;color:inherit;min-height:84px}
-.portal:hover{border-color:var(--c,var(--fiber));border-left-color:var(--c,var(--fiber))}
-.portal .ic{font-size:1.8rem;line-height:1;flex:none;width:44px;height:44px;display:grid;place-items:center;border-radius:8px;background:var(--bg)}
-.portal .tx{min-width:0;flex:1}
-.portal b{display:block;font:600 1.3rem/1.15 var(--cond)}
-.portal small{display:block;color:var(--muted);font-size:.92rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-.edit-tools{display:none;gap:6px;flex:none}
-.editing .edit-tools{display:flex}
-.mini{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:5px 9px;cursor:pointer;font-size:.85rem;font-weight:600}
-.mini:hover{border-color:var(--fiber)}
-.empty{background:var(--surface);border:2px dashed var(--line);border-radius:10px;padding:40px 20px;text-align:center;color:var(--muted)}
-.empty b{display:block;font:600 1.5rem var(--cond);color:var(--ink);margin-bottom:6px}
-
-/* Dialog */
-dialog{border:none;border-radius:12px;padding:0;background:var(--surface);color:var(--ink);width:min(520px,calc(100vw - 24px));max-height:calc(100vh - 24px)}
-dialog::backdrop{background:rgba(10,20,30,.55)}
-.dlg{padding:22px}
-.dlg h3{margin:0 0 16px;font:700 1.7rem var(--cond)}
-.field{margin-bottom:14px}
-.field label{display:block;font-weight:600;font-size:.92rem;margin-bottom:4px}
-.field input,.field select,.field textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
-.field .hint{font-size:.82rem;color:var(--muted);margin-top:3px}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.swatches{display:flex;gap:8px;flex-wrap:wrap}
-.sw{width:32px;height:32px;border-radius:50%;border:3px solid transparent;cursor:pointer;background:var(--s)}
-.sw[aria-pressed="true"]{border-color:var(--ink)}
-.dlg-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap}
-.err{color:var(--fault);font-size:.9rem;min-height:1.2em}
-.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--rail);color:#fff;padding:10px 18px;border-radius:8px;opacity:0;pointer-events:none;transition:opacity .2s}
-.toast.show{opacity:1}
-@media (max-width:520px){.row{grid-template-columns:1fr}.rail-in{padding-top:20px}}
-@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+@media (prefers-color-scheme: dark){
+  :root{
+    --color-bg:#15171a; --color-panel:#1e2125; --color-fg:#e8eaed; --color-fg-muted:#a2a9b2; --color-border-line:#33373d;
+    --color-ok:#4ade80; --color-warn:#fbbf24; --color-bad:#fb923c;
+    --cds-chart-muted:#3a3f46; --cds-surface-popover:#2a2e33; --cds-border:#3d4249; --cds-shadow-popover:0 6px 20px rgba(0,0,0,.5); --cds-text-secondary:#a2a9b2;
+    color-scheme:dark;
+  }
+}
+html,body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(--font-anthropic-sans)}
+#dash-root{max-width:1400px;margin:0 auto;padding:1.25rem clamp(.75rem,3vw,2rem) 3rem}
+.dash-skeleton{color:transparent!important;background:linear-gradient(90deg,var(--cds-chart-muted),color-mix(in srgb,var(--cds-chart-muted) 50%,transparent),var(--cds-chart-muted));background-size:200% 100%;animation:sk 1.2s infinite;border-radius:4px}
+@keyframes sk{to{background-position:-200% 0}}
+a.op-btn{text-decoration:none;display:inline-block}
+[hidden]{display:none!important}
+.op-lastup{margin-top:var(--cds-gap-sm);font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.op-lastup.err{color:var(--color-bad);background:color-mix(in srgb,var(--color-bad) 10%,var(--color-panel));border:1px solid color-mix(in srgb,var(--color-bad) 40%,transparent);border-radius:var(--cds-radius);padding:var(--cds-pad-sm) var(--cds-pad-md)}
+.op-lastup ul{margin:.3rem 0 0;padding-left:1.2rem}
+.op-loaderr{margin:2rem 0;padding:1rem;border-radius:var(--cds-radius);border:1px solid var(--color-border-line);background:var(--color-panel)}
 </style>
+<script>
+/* ---------- settings ---------- */
+// GitHub repository that hosts this portal, e.g. "my-company/ops-portal".
+// Leave empty when the site runs on GitHub Pages (https://<owner>.github.io/<repo>/): it is detected automatically.
+window.PORTAL_CONFIG = { githubRepo: 'Mgprotocol-code/ops-portal', branch: 'main' };
+
+/* ---------- data layer: loads data/*.json and serves it to the page ---------- */
+window.dash = (function () {
+  const store = {}, calcs = [], listeners = [];
+  let params = {};
+  const emit = () => listeners.forEach((fn) => { try { fn(); } catch (e) { console.error(e); } });
+  let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(emit, 120); });
+  const api = {
+    colors: ['#2f6fd6', '#d97706', '#0f9f8f', '#8b5cf6', '#db2777', '#0891b2', '#65a30d', '#dc2626'],
+    data: (id) => store[id] || { status: 'loading', data: [], columns: [] },
+    calc: (id, o) => { calcs.push([id, o]); },
+    onData: (fn) => { listeners.push(fn); fn(); },
+    params: () => ({ ...params }),
+    setParams: (p) => { params = { ...params, ...p }; emit(); },
+    resetParams: () => { params = {}; emit(); },
+    setLink: (name) => { history.replaceState(null, '', '#' + name); },
+    refresh: () => load(),
+  };
+  async function getJSON(path) {
+    const r = await fetch(path + '?v=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) throw new Error(path + ' (' + r.status + ')');
+    return r.json();
+  }
+  async function load() {
+    try {
+      const days = await getJSON('data/days.json');
+      const files = await Promise.all(days.map((d) => getJSON('data/' + d + '.json').catch(() => null)));
+      const merged = {};
+      files.filter(Boolean).forEach((f) => {
+        Object.entries(f.datasets).forEach(([id, rows]) => {
+          (merged[id] = merged[id] || []).push(...rows.map((r) => ({ report_date: f.report_date, ...r })));
+        });
+      });
+      Object.keys(store).forEach((k) => delete store[k]);
+      Object.entries(merged).forEach(([id, rows]) => { store[id] = { status: 'ok', data: rows, columns: rows[0] ? Object.keys(rows[0]) : [] }; });
+      calcs.forEach(([id, o]) => {
+        try { const out = o.fn(...o.inputs.map((i) => (store[i] ? store[i].data : []))); store[id] = { status: 'ok', data: out, columns: out[0] ? Object.keys(out[0]) : [] }; }
+        catch (e) { console.error('calc ' + id, e); store[id] = { status: 'error', data: [], message: String(e) }; }
+      });
+    } catch (e) {
+      console.error(e);
+      ['report_info'].concat(calcs.map((c) => c[0])).forEach((id) => { store[id] = { status: 'error', data: [], message: String(e) }; });
+      const m = document.getElementById('op-loaderr');
+      if (m) { m.hidden = false; m.querySelector('span').textContent = String(e.message || e); }
+    }
+    emit();
+  }
+  document.addEventListener('DOMContentLoaded', load);
+  return api;
+})();
+</script>
 </head>
 <body>
-<header class="rail">
-  <div class="rail-in">
-    <div>
-      <h1 id="title"></h1>
-      <p id="subtitle"></p>
-    </div>
-    <div class="rail-actions">
-      <button class="btn ghost" id="editBtn" type="button">Edit portals</button>
-      <button class="btn primary" id="addBtn" type="button" hidden>+ New portal</button>
-    </div>
-  </div>
-</header>
+<div id="dash-root">
+<div class="op-loaderr" id="op-loaderr" hidden><b>Could not load the portal data.</b> Missing: <span></span>. Check that the <code>data</code> folder is in the repository, and open the portal through its web address (not by double-clicking the file).</div>
+<style>
+.op{font-family:var(--font-anthropic-sans);color:var(--color-fg)}
+.op-head h1{font-family:var(--font-anthropic-serif);font-weight:400;font-size:var(--cds-font-size-title);margin:0;line-height:1.2}
+.op-take{color:var(--color-fg-muted);margin:var(--cds-gap-xs) 0 0;font-size:var(--cds-font-size-body);max-width:60rem}
+.op-take b,.op b{font-weight:var(--cds-font-weight-medium);color:var(--color-fg)}
+.op-tabs{display:flex;gap:var(--cds-gap-xs);flex-wrap:wrap;margin:var(--cds-gap-lg) 0 var(--cds-gap-md);border-bottom:1px solid var(--color-border-line)}
+.op-tab{background:none;border:0;border-bottom:2px solid transparent;padding:var(--cds-pad-sm) var(--cds-pad-md);font:inherit;font-size:var(--cds-font-size-body);color:var(--color-fg-muted);cursor:pointer;margin-bottom:-1px}
+.op-tab[aria-selected="true"]{color:var(--color-fg);border-bottom-color:var(--color-fg)}
+.op-page[hidden]{display:none}
+.op-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,11rem),1fr));gap:var(--cds-gap-md)}
+.op-card{background:var(--color-panel);border:1px solid var(--color-border-line);border-radius:var(--cds-radius);padding:var(--cds-pad-lg);min-width:0;container-type:inline-size}
+.op-tile .lbl{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.op-tile .big{font-family:var(--font-anthropic-serif);font-weight:400;font-size:calc(var(--cds-font-size-title) * 1.35);line-height:1.15;margin:var(--cds-gap-xs) 0;font-variant-numeric:tabular-nums;display:block;min-height:1.15em}
+.op-tile .sub{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);font-variant-numeric:tabular-nums}
+.op-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,22rem),1fr));gap:var(--cds-gap-md);margin-top:var(--cds-gap-md)}
+.op-wide{grid-column:1/-1}
+.op-card h2{font-size:var(--cds-font-size-heading);font-weight:var(--cds-font-weight-medium);margin:0}
+.op-note{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);margin:var(--cds-gap-xs) 0 var(--cds-gap-md)}
+.op-scroll{overflow:auto;max-height:32rem}
+.op-tbl{width:100%;border-collapse:collapse;font-size:var(--cds-font-size-body);font-variant-numeric:tabular-nums}
+.op-tbl th{position:sticky;top:0;background:var(--color-panel);text-align:left;font-weight:var(--cds-font-weight-medium);font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);padding:var(--cds-pad-xs) var(--cds-pad-sm);border-bottom:1px solid var(--color-border-line);white-space:nowrap;z-index:1}
+.op-tbl td{padding:var(--cds-pad-xs) var(--cds-pad-sm);border-bottom:1px solid var(--color-border-line);vertical-align:top}
+.op-tbl .num{text-align:right;white-space:nowrap}
+.op-tbl tr.tot td,.op-tbl tfoot td{font-weight:var(--cds-font-weight-medium);background:color-mix(in srgb,var(--color-fg) 4%,transparent)}
+.op-tbl th button{all:unset;cursor:pointer}
+.op-tbl th button:focus-visible{outline:2px solid var(--color-fg)}
+.op-mm{font-family:var(--font-anthropic-sans),"Noto Sans Myanmar","Myanmar Text",Padauk,sans-serif;line-height:1.75;min-width:16rem}
+.op-warn{color:var(--color-warn);font-weight:var(--cds-font-weight-medium)}
+.op-bad{color:var(--color-bad);font-weight:var(--cds-font-weight-medium)}
+.op-tag{display:inline-block;font-size:var(--cds-font-size-caption);padding:0 var(--cds-pad-xs);border-radius:var(--cds-radius);border:1px solid var(--color-border-line);white-space:nowrap}
+.op-tools{display:flex;flex-wrap:wrap;gap:var(--cds-gap-sm);align-items:center;margin-bottom:var(--cds-gap-sm)}
+.op-tools input{font:inherit;font-size:var(--cds-font-size-body);padding:var(--cds-pad-xs) var(--cds-pad-sm);border:1px solid var(--color-border-line);border-radius:var(--cds-radius);background:var(--color-bg);color:var(--color-fg);flex:1 1 12rem;min-width:0}
+.op-chip{font:inherit;font-size:var(--cds-font-size-caption);padding:var(--cds-pad-xs) var(--cds-pad-sm);border:1px solid var(--color-border-line);border-radius:999px;background:none;color:var(--color-fg-muted);cursor:pointer}
+.op-chip[aria-pressed="true"]{background:var(--color-fg);color:var(--color-bg);border-color:var(--color-fg)}
+.op-bar{display:flex;align-items:center;gap:var(--cds-gap-xs);justify-content:flex-end}
+.op-bar i{display:block;height:6px;border-radius:3px;background:var(--cds-chart-muted);width:4rem;position:relative;overflow:hidden}
+.op-bar i s{position:absolute;inset:0 auto 0 0;border-radius:3px;text-decoration:none}
+.op-chart{position:relative;min-height:12rem}
+.op-legend{display:flex;gap:var(--cds-gap-md);flex-wrap:wrap;font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);margin-bottom:var(--cds-gap-sm)}
+.op-legend span::before{content:"";display:inline-block;width:.6rem;height:.6rem;border-radius:2px;margin-right:.35rem;background:var(--sw)}
+.op-tip{position:absolute;pointer-events:none;background:var(--cds-surface-popover);border:1px solid var(--cds-border);border-radius:var(--cds-radius);box-shadow:var(--cds-shadow-popover);padding:var(--cds-pad-xs) var(--cds-pad-sm);font-size:var(--cds-font-size-caption);white-space:nowrap;z-index:5}
+.op-tip .h{color:var(--cds-text-secondary)}
+.op-chart text{font-size:var(--cds-font-size-caption);fill:var(--color-fg-muted);font-family:var(--font-anthropic-sans)}
+.op-chart text.v{fill:var(--color-fg)}
+.op-pv tr.op-grp th{text-align:center;border-bottom:0}
+.op-pv th.op-gt{color:var(--c0);border-bottom:2px solid var(--c0)}
+.op-pv th.op-gr{color:var(--c2);border-bottom:2px solid var(--c2)}
+.op-pv th.op-gp{color:var(--c1);border-bottom:2px solid var(--c1)}
+.op-pv thead tr:nth-child(2) th{top:1.9em}
+.op-pv td.op-l{border-left:2px solid color-mix(in srgb,var(--pc) 30%,transparent)}
+.op-pv tr.sub td{font-weight:var(--cds-font-weight-medium);background:color-mix(in srgb,var(--pc) 10%,transparent)}
+.op-pv tr.grand td{font-weight:var(--cds-font-weight-medium);background:color-mix(in srgb,var(--pc) 20%,transparent);border-top:2px solid var(--pc)}
+.op-pv tr.first td{border-top:2px solid var(--color-border-line)}
+.op-boxsum{--pc:var(--c3)}
+.op-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,9rem),1fr));gap:var(--cds-gap-sm)}
+.op-kpi{padding:var(--cds-pad-sm) var(--cds-pad-md);border-radius:var(--cds-radius);background:color-mix(in srgb,var(--c3) 9%,transparent);border-left:3px solid var(--c3)}
+.op-kpi .lbl{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.op-kpi .v{display:block;font-family:var(--font-anthropic-serif);font-weight:400;font-size:var(--cds-font-size-title);font-variant-numeric:tabular-nums}
+.op-kpi .sub{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);font-variant-numeric:tabular-nums}
+.op-headrow{display:flex;flex-wrap:wrap;gap:var(--cds-gap-sm);align-items:center;justify-content:space-between}
+.op-upbtns{display:flex;gap:var(--cds-gap-xs);flex-wrap:wrap}
+.op-btn{font:inherit;font-size:var(--cds-font-size-caption);padding:var(--cds-pad-xs) var(--cds-pad-md);border-radius:var(--cds-radius);border:1px solid var(--color-border-line);background:var(--color-panel);color:var(--color-fg);cursor:pointer}
+.op-btn:hover{border-color:var(--color-fg-muted)}
+.op-btn-pri{background:var(--c0);border-color:var(--c0);color:var(--color-bg);font-weight:var(--cds-font-weight-medium)}
+.op-btn[disabled]{opacity:.5;cursor:not-allowed}
+.op-upanel{margin-top:var(--cds-gap-md);background:var(--color-panel);border:1px solid var(--color-border-line);border-radius:var(--cds-radius);padding:var(--cds-pad-lg)}
+.op-upanel h3{margin:0 0 var(--cds-gap-xs);font-size:var(--cds-font-size-heading);font-weight:var(--cds-font-weight-medium)}
+.op-upanel ul{margin:var(--cds-gap-xs) 0;padding-left:1.2rem;font-size:var(--cds-font-size-caption)}
+.op-upanel .err li{color:var(--color-bad)}
+.op-upanel .wrn li{color:var(--color-warn)}
+.op-upanel .ok{color:var(--color-ok);font-weight:var(--cds-font-weight-medium)}
+.op-upcounts{display:flex;flex-wrap:wrap;gap:var(--cds-gap-xs);margin:var(--cds-gap-sm) 0}
+.op-upcounts span{font-size:var(--cds-font-size-caption);padding:0 var(--cds-pad-sm);border-radius:999px;background:color-mix(in srgb,var(--c0) 12%,transparent)}
+.op-upact{display:flex;gap:var(--cds-gap-sm);align-items:center;flex-wrap:wrap;margin-top:var(--cds-gap-sm)}
+.op-days{--pc:var(--c0);display:flex;flex-wrap:wrap;gap:var(--cds-gap-xs);align-items:center;margin-top:var(--cds-gap-sm)}
+.op-dlab{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);margin-right:var(--cds-gap-xs)}
+.op-day{background:var(--color-panel)}
+.op-day[aria-pressed="true"]{background:var(--c0);border-color:var(--c0);color:var(--color-bg)}
+.op-pastnote{margin:var(--cds-gap-xs) 0 0;font-size:var(--cds-font-size-caption);color:var(--color-warn);font-weight:var(--cds-font-weight-medium)}
+.op-nowrap{white-space:nowrap}
+.op-fail{text-align:center;color:var(--color-fg-muted);font-size:var(--cds-font-size-caption);padding:var(--cds-pad-lg)}
+.op-dot{display:inline-block;width:.375rem;height:.375rem;border-radius:50%;background:var(--color-bad);margin-right:.4rem;vertical-align:middle}
+[data-dash-source-state=empty]{color:transparent}
+[data-dash-source-state=refreshing]{opacity:.5;transition:opacity var(--cds-dur-slow)}
+/* colour layer */
+.op-head{padding:var(--cds-pad-lg);border-radius:var(--cds-radius);background:linear-gradient(120deg,color-mix(in srgb,var(--c0) 22%,var(--color-panel)),color-mix(in srgb,var(--c2) 18%,var(--color-panel)) 55%,color-mix(in srgb,var(--c3) 20%,var(--color-panel)));border:1px solid var(--color-border-line)}
+.op-take b{color:var(--c0)}
+.op-tab{border-radius:var(--cds-radius) var(--cds-radius) 0 0}
+.op-tab[aria-selected="true"]{color:var(--pc);border-bottom-color:var(--pc);background:color-mix(in srgb,var(--pc) 10%,transparent)}
+.op-tile{border-top:4px solid var(--acc);background:color-mix(in srgb,var(--acc) 9%,var(--color-panel))}
+.op-tile .lbl{color:var(--acc);font-weight:var(--cds-font-weight-medium)}
+.op-page .op-card:not(.op-tile){border-top:3px solid var(--pc)}
+.op-card h2::before{content:"";display:inline-block;width:.55rem;height:.55rem;border-radius:50%;background:var(--pc);margin-right:.45rem;vertical-align:middle}
+.op-tbl th{background:color-mix(in srgb,var(--pc) 10%,var(--color-panel));color:var(--color-fg)}
+.op-tbl tbody tr:hover td{background:color-mix(in srgb,var(--pc) 6%,transparent)}
+.op-chip[aria-pressed="true"]{background:var(--pc);border-color:var(--pc);color:var(--color-bg)}
+.op-tag{border-color:var(--tc);background:color-mix(in srgb,var(--tc) 16%,transparent);color:var(--color-fg)}
+#tbl-remarks tbody td:first-child{border-left:4px solid var(--tc)}
+.op-pill{display:inline-block;min-width:1.6em;text-align:center;padding:0 .4em;border-radius:999px}
+.op-pill.ok{background:color-mix(in srgb,var(--color-ok) 18%,transparent);color:var(--color-ok)}
+.op-pill.warn{background:color-mix(in srgb,var(--color-warn) 20%,transparent);color:var(--color-warn)}
+.op-pill.bad{background:color-mix(in srgb,var(--color-bad) 18%,transparent);color:var(--color-bad)}
+.op-tbl tr.tot td{background:color-mix(in srgb,var(--pc) 12%,transparent)}
+.op-tbl tfoot td{background:color-mix(in srgb,var(--pc) 12%,transparent)}
+@container (max-width:44rem){.op-sec{display:none}}
+</style>
 
-<main id="main">
-  <div class="notice" id="notice" hidden></div>
-  <div class="toolbar"><input class="search" id="search" type="search" placeholder="Find a portal…" aria-label="Find a portal"></div>
-  <div id="groups"><p style="color:var(--muted)">Loading portals…</p></div>
-</main>
-
-<!-- Add / edit portal -->
-<dialog id="portalDlg">
-  <form class="dlg" id="portalForm" method="dialog">
-    <h3 id="dlgTitle">New portal</h3>
-    <div class="field"><label for="fName">Portal name</label><input id="fName" required maxlength="60" placeholder="Box Ops Daily Portal"></div>
-    <div class="field"><label for="fUrl">Link</label><input id="fUrl" required placeholder="https://yzofinancial.netlify.app"><div class="hint">Copy the link from your browser’s address bar.</div></div>
-    <div class="field"><label for="fDesc">Short description</label><input id="fDesc" maxlength="120" placeholder="Daily box operations and fault reports"></div>
-    <div class="row">
-      <div class="field"><label for="fCat">Group</label><input id="fCat" list="cats" maxlength="40" placeholder="Finance"><datalist id="cats"></datalist></div>
-      <div class="field"><label for="fIcon">Icon (emoji)</label><input id="fIcon" maxlength="4" placeholder="📊"></div>
+<div class="op">
+  <header class="op-head" id="top">
+    <div class="op-headrow">
+      <h1>Operation daily planning · <span data-source="report_info" data-field="report_date" data-fill="D">—</span></h1>
+      <div class="op-upbtns">
+        <a class="op-btn op-btn-pri" id="op-upload-link" href="#" target="_blank" rel="noopener" hidden>⬆ Upload daily Excel</a>
+        <button class="op-btn" id="op-check-btn">✓ Check Excel</button>
+        <a class="op-btn" href="template/Operation_Daily_Report_Template.xlsx" download>⬇ Excel template</a>
+        <input type="file" id="op-file" accept=".xlsx" hidden>
+      </div>
     </div>
-    <div class="field"><label>Color</label><div class="swatches" id="swatches"></div></div>
-    <div class="field"><label for="fOrder">Position</label><input id="fOrder" type="number" placeholder="1"><div class="hint">Smaller numbers appear first.</div></div>
-    <div class="err" id="formErr"></div>
-    <div class="dlg-actions">
-      <button class="btn danger" id="delBtn" type="button" hidden>Delete</button>
-      <button class="btn" type="button" id="cancelBtn">Cancel</button>
-      <button class="btn primary" type="submit" id="saveBtn">Save portal</button>
-    </div>
-  </form>
-</dialog>
+    <div class="op-days" id="op-days" data-source="report_info" role="group" aria-label="Report day"></div>
+    <p class="op-pastnote" id="op-pastnote" hidden>You are looking at a past day. The portal keeps the last 7 report days; older days are removed automatically when a new day is uploaded.</p>
+    <p class="op-take">YGN fleet covered <b data-source="fleet_totals" data-field="actual_pct" data-fill="p" class="dash-skeleton">—</b> of car requests<span class="op-short" hidden>; <b data-source="city_short" data-field="city" data-pick="city" data-fill="t">—</b> is short <b data-source="city_short" data-field="short" data-pick="city" data-fill="n">—</b> car(s)</span>; <b data-source="pending_total" data-field="sites" data-fill="n" class="dash-skeleton">—</b> FTTx sites from <span data-source="report_info" data-field="prev_date" data-fill="d">—</span> are still pending; Box-Ops has planned <b data-source="box_totals" data-field="plan_pct" data-fill="p" class="dash-skeleton">—</b> of the ticket blog.</p>
+    <div class="op-lastup" id="op-lastup" hidden></div>
+    <div class="op-upanel" id="op-upanel" hidden></div>
+  </header>
 
-<!-- Sign in -->
-<dialog id="loginDlg">
-  <form class="dlg" id="loginForm" method="dialog">
-    <h3>Enter edit password</h3>
-    <div class="field"><label for="lPass">Password</label><input id="lPass" type="password" required autocomplete="current-password"></div>
-    <div class="err" id="loginErr"></div>
-    <div class="dlg-actions">
-      <button class="btn" type="button" id="loginCancel">Cancel</button>
-      <button class="btn primary" type="submit">Sign in</button>
-    </div>
-  </form>
-</dialog>
+  <nav class="op-tabs" role="tablist">
+    <button class="op-tab" role="tab" data-page="overview" aria-selected="true">Overview</button>
+    <button class="op-tab" role="tab" data-page="fleet" aria-selected="false">Fleet</button>
+    <button class="op-tab" role="tab" data-page="fttx" aria-selected="false">FTTx-Ops</button>
+    <button class="op-tab" role="tab" data-page="boxops" aria-selected="false">Box-Ops</button>
+  </nav>
 
-<div class="toast" id="toast" role="status"></div>
+  <!-- OVERVIEW -->
+  <section class="op-page" id="overview">
+    <div class="op-tiles">
+      <div class="op-card op-tile" id="tile-ygn">
+        <div class="lbl">YGN cars assigned · <span data-source="report_info" data-field="fleet_time" data-fill="t">—</span></div>
+        <b class="big dash-skeleton" data-source="fleet_totals" data-field="actual" data-fill="n">—</b>
+        <div class="sub"><span class="op-pill ok" data-source="fleet_totals" data-field="actual_pct" data-fill="p1">—</span> of <span data-source="fleet_totals" data-field="request" data-fill="n">—</span> requested</div>
+        <div class="sub">Actual vs plan <span data-source="fleet_totals" data-field="plan_use_pct" data-fill="p1">—</span> (plan <span data-source="fleet_totals" data-field="plan" data-fill="n">—</span>)</div>
+      </div>
+      <div class="op-card op-tile" id="tile-cities">
+        <div class="lbl">All cities cars assigned</div>
+        <b class="big dash-skeleton" data-source="city_cars" data-field="actual" data-where="city=All Cities" data-fill="n">—</b>
+        <div class="sub"><span class="op-pill ok" data-source="city_total" data-field="actual_pct" data-fill="p1">—</span> of <span data-source="city_cars" data-field="request" data-where="city=All Cities" data-fill="n">—</span> requested</div>
+      </div>
+      <div class="op-card op-tile" id="tile-workshop">
+        <div class="lbl">Cars in workshop</div>
+        <b class="big dash-skeleton" data-source="workshop_cars" data-field="cars" data-fill="n">—</b>
+        <div class="sub"><span class="op-pill warn" data-source="workshop_cars" data-field="pct_of_ygn" data-fill="p1">—</span> of YGN cars assigned</div>
+        <div class="sub">Driver leave / site cancel <span data-source="fleet_notes" data-field="value" data-where="metric=Driver leave / site cancel" data-fill="n">—</span></div>
+      </div>
+      <div class="op-card op-tile" id="tile-fttx">
+        <div class="lbl">FTTx pending blog today</div>
+        <b class="big dash-skeleton" data-source="fttx_totals" data-field="pending" data-fill="n">—</b>
+        <div class="sub"><span class="op-pill warn" data-source="fttx_totals" data-field="pending_pct" data-fill="p1">—</span> of all blog (broken + migration + pending)</div>
+        <div class="sub">Broken / high-loss <span data-source="fttx_totals" data-field="broken_highloss" data-fill="n">—</span></div>
+      </div>
+      <div class="op-card op-tile" id="tile-pending">
+        <div class="lbl">Sites pending from <span data-source="report_info" data-field="prev_date" data-fill="d">—</span></div>
+        <b class="big dash-skeleton" data-source="pending_total" data-field="sites" data-fill="n">—</b>
+        <div class="sub">Biggest: <span data-source="pending_top" data-field="reason" data-fill="t">—</span> <span class="op-pill bad" data-source="pending_top" data-field="pct" data-fill="p1">—</span></div>
+      </div>
+      <div class="op-card op-tile" id="tile-box">
+        <div class="lbl">Box-Ops tickets planned</div>
+        <b class="big dash-skeleton" data-source="box_totals" data-field="plan_pct" data-fill="p">—</b>
+        <div class="sub"><span data-source="box_totals" data-field="plan_tkts" data-fill="n">—</span> of <span data-source="box_totals" data-field="ticket_blog" data-fill="n">—</span> ticket blog</div>
+        <div class="sub">POI planned <span class="op-pill bad" data-source="box_totals" data-field="poi_pct" data-fill="p1">—</span> (<span data-source="box_totals" data-field="plan_poi" data-fill="n">—</span> of <span data-source="box_totals" data-field="poi_blog" data-fill="n">—</span>)</div>
+      </div>
+    </div>
+
+
+    <div class="op-grid">
+      <div class="op-card op-wide op-boxsum" id="box-summary">
+        <h2>Box-Ops summary</h2>
+        <p class="op-note"><span data-source="report_info" data-field="report_date" data-fill="d">—</span>, <span data-source="report_info" data-field="box_time" data-fill="t">—</span> · all townships. Car/Team = SI team ÷ car, Team/Labour = labour ÷ SI team, as in the report.</p>
+        <div class="op-kpis">
+          <div class="op-kpi"><div class="lbl">Ticket blog</div><b class="v"><span data-source="box_region_table" data-where="region=All regions&amp;tsp=Grand total" data-field="ticket_blog" data-fill="n">—</span></b><div class="sub">planned <span data-source="box_region_table" data-where="region=All regions&amp;tsp=Grand total" data-field="plan_tkts" data-fill="n">—</span> · <span class="op-pill warn"><span data-source="box_region_table" data-where="region=All regions&amp;tsp=Grand total" data-field="plan_pct_tkt" data-fill="p1">—</span></span></div><div class="sub">left <span data-source="box_region_table" data-where="region=All regions&amp;tsp=Grand total" data-field="tkt_left" data-fill="n">—</span></div></div>
+          <div class="op-kpi"><div class="lbl">POI blog</div><b class="v"><span data-source="box_region_table" data-where="region=All regions&amp;tsp=Grand total" data-field="poi_blog" data-fill="n">—</span></b><div class="sub">planned <span data-source="box_region_table" data-where="region=All regions&amp;tsp=Grand total" data-field="plan_poi" data-fill="n">—</span> · <span class="op-pill bad"><span data-source="box_region_table" data-where="region=All regions&amp;tsp=Grand total" data-field="plan_pct_poi" data-fill="p1">—</span></span></div><div class="sub">left <span data-source="box_region_table" data-where="region=All regions&amp;tsp=Grand total" data-field="poi_left" data-fill="n">—</span></div></div>
+          <div class="op-kpi"><div class="lbl">SI team</div><b class="v"><span data-source="box_region_table" data-where="region=All regions&amp;tsp=Grand total" data-field="si_team" data-fill="n">—</span></b><div class="sub"><span data-source="box_region_table" data-where="region=All regions&amp;tsp=Grand total" data-field="townships" data-fill="n">—</span> townships</div></div>
+          <div class="op-kpi"><div class="lbl">Car</div><b class="v"><span data-source="box_region_table" data-where="region=All regions&amp;tsp=Grand total" data-field="car" data-fill="n">—</span></b><div class="sub">Car/Team <span data-source="box_region_table" data-where="region=All regions&amp;tsp=Grand total" data-field="car_per_team" data-fill="r">—</span></div></div>
+          <div class="op-kpi"><div class="lbl">Labour</div><b class="v"><span data-source="box_region_table" data-where="region=All regions&amp;tsp=Grand total" data-field="labour" data-fill="n">—</span></b><div class="sub">Team/Labour <span data-source="box_region_table" data-where="region=All regions&amp;tsp=Grand total" data-field="team_per_labour" data-fill="r">—</span></div></div>
+        </div>
+        <div class="op-scroll" style="max-height:none;margin-top:var(--cds-gap-md)">
+          <table class="op-tbl op-pv" id="tbl-boxreg" data-source="box_region_table" data-row-key="report_date,row_id">
+            <thead>
+              <tr class="op-grp"><th></th><th colspan="4" class="op-gt">Tickets</th><th colspan="4" class="op-gp">POI</th><th colspan="5" class="op-gr">Resources</th></tr>
+              <tr><th data-field="region">Region</th>
+              <th data-field="ticket_blog" class="num">Blog</th><th data-field="plan_tkts" class="num">Planned</th><th data-field="plan_pct_tkt" class="num">Plan %</th><th data-field="tkt_left" class="num">Left</th>
+              <th data-field="poi_blog" class="num">Blog</th><th data-field="plan_poi" class="num">Planned</th><th data-field="plan_pct_poi" class="num">Plan %</th><th data-field="poi_left" class="num">Left</th>
+              <th data-field="si_team" class="num">SI team</th><th data-field="car" class="num">Car</th><th data-field="labour" class="num">Labour</th><th data-field="car_per_team" class="num">Car/Team</th><th data-field="team_per_labour" class="num">Team/Labour</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="op-card op-wide op-boxsum" id="box-top3">
+        <h2>Top 3 Box-Ops issues</h2>
+        <p class="op-note">The three gaps that most affect today’s plan. <button class="op-chip op-goto" data-page="boxops" aria-pressed="false">See all issues in Box-Ops →</button></p>
+        <table class="op-tbl" id="tbl-top3" data-source="box_top3" data-row-key="report_date,rank">
+          <thead><tr><th data-field="rank">#</th><th data-field="issue">Issue</th><th data-field="where">Where</th><th data-field="detail">Detail</th><th data-field="action">Suggested action</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- FLEET -->
+  <section class="op-page" id="fleet" hidden>
+    <div class="op-grid">
+      <div class="op-card op-wide" id="by-priority">
+        <h2>YGN cars by priority</h2>
+        <p class="op-note">Request, plan and actual · <span data-source="report_info" data-field="report_date" data-fill="d">—</span>, <span data-source="report_info" data-field="fleet_time" data-fill="t">—</span>.</p>
+        <div class="op-legend" data-source="fleet_by_priority"><span class="lg0">Request</span><span class="lg1">Plan</span><span class="lg2">Actual</span></div>
+        <div class="op-chart" id="chart-priority" data-source="fleet_by_priority"></div>
+      </div>
+      <div class="op-card" id="fleet-remarks">
+        <h2>Fleet remarks</h2>
+        <p class="op-note">Remarks from the Fleet Planning sheet.</p>
+        <table class="op-tbl" id="tbl-rem-fleet" data-source="remarks" data-row-key="report_date,id">
+          <thead><tr><th data-field="topic">Topic</th><th data-field="date">Date</th><th data-field="remark">Remark</th></tr></thead><tbody></tbody>
+        </table>
+      </div>
+      <div class="op-card" id="gap">
+        <h2>Fleet plan gap</h2>
+        <p class="op-note">How the report explains plan vs actual cars (YGN).</p>
+        <table class="op-tbl" id="tbl-notes" data-source="fleet_notes" data-row-key="report_date,metric">
+          <thead><tr><th data-field="metric">Item</th><th data-field="value" class="num">Cars</th><th data-source="notes_pct" data-field="pct_of_plan" class="num">% of plan</th></tr></thead><tbody></tbody>
+        </table>
+      </div>
+      <div class="op-card op-wide" id="teams">
+        <h2>Car assignment by team</h2>
+        <p class="op-note">All YGN teams, grouped by priority. Highlighted where plan is above actual.</p>
+        <div class="op-scroll">
+          <table class="op-tbl" id="tbl-teams" data-source="fleet_by_team" data-row-key="report_date,team">
+            <thead><tr><th data-field="priority">Priority</th><th data-field="team">Team</th><th data-field="request" class="num">Request</th><th data-field="plan" class="num">Plan</th><th data-field="actual" class="num">Actual</th><th data-field="actual_pct" class="num">Actual %</th></tr></thead>
+            <tbody></tbody>
+            <tfoot><tr><td>Total</td><td></td><td class="num" data-source="fleet_totals" data-field="request" data-fill="n">—</td><td class="num" data-source="fleet_totals" data-field="plan" data-fill="n">—</td><td class="num" data-source="fleet_totals" data-field="actual" data-fill="n">—</td><td class="num" data-source="fleet_totals" data-field="actual_pct" data-fill="p">—</td></tr></tfoot>
+          </table>
+        </div>
+      </div>
+      <div class="op-card" id="office">
+        <h2>Office cars by OU</h2>
+        <p class="op-note">Day and night shifts · <span data-source="report_info" data-field="report_date" data-fill="d">—</span>, <span data-source="report_info" data-field="fleet_time" data-fill="t">—</span>.</p>
+        <div class="op-scroll">
+          <table class="op-tbl" id="tbl-office" data-source="office_cars" data-row-key="report_date,ou">
+            <thead><tr><th data-field="ou">OU</th><th data-field="day" class="num">Day</th><th data-field="night" class="num">Night</th><th data-field="total" class="num">Total</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="op-card" id="cities">
+        <h2>Car assignment by city</h2>
+        <p class="op-note">Request vs actual · <span data-source="report_info" data-field="report_date" data-fill="d">—</span>, <span data-source="report_info" data-field="city_time" data-fill="t">—</span>.</p>
+        <table class="op-tbl" id="tbl-cities" data-source="city_cars" data-row-key="report_date,city">
+          <thead><tr><th data-field="city">City</th><th data-field="request" class="num">Request</th><th data-field="actual" class="num">Actual</th><th data-field="actual_pct" class="num">%</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- FTTX -->
+  <section class="op-page" id="fttx" hidden>
+    <div class="op-grid">
+      <div class="op-card op-wide" id="blog">
+        <h2>Today’s blog by region</h2>
+        <p class="op-note"><span data-source="report_info" data-field="report_date" data-fill="d">—</span>, <span data-source="report_info" data-field="fttx_time" data-fill="t">—</span>.</p>
+        <div class="op-scroll">
+          <table class="op-tbl" id="tbl-blog" data-source="fttx_blog" data-row-key="report_date,region">
+            <thead><tr><th data-field="region">Region</th><th data-field="team" class="num">Team</th><th data-field="car" class="num">Car</th><th data-field="broken_highloss" class="num">Broken / high-loss</th><th data-field="migration" class="num">Migration / activities</th><th data-field="pending" class="num">Remain / pending</th></tr></thead>
+            <tbody></tbody>
+            <tfoot><tr><td>Total</td><td class="num" data-source="fttx_totals" data-field="team" data-fill="n">—</td><td class="num" data-source="fttx_totals" data-field="car" data-fill="n">—</td><td class="num" data-source="fttx_totals" data-field="broken_highloss" data-fill="n">—</td><td class="num" data-source="fttx_totals" data-field="migration" data-fill="n">—</td><td class="num" data-source="fttx_totals" data-field="pending" data-fill="n">—</td></tr></tfoot>
+          </table>
+        </div>
+      </div>
+      <div class="op-card op-wide" id="remarks">
+        <h2>FTTx remarks</h2>
+        <p class="op-note">Today’s FTTx remark and the previous day’s pending-site explanations.</p>
+        <div class="op-tools">
+          <input class="op-rsearch" type="search" placeholder="Search remarks, township…" aria-label="Search remarks">
+          <button class="op-chip" data-area="" aria-pressed="true">All</button>
+          <button class="op-chip" data-area="FTTx" aria-pressed="false">FTTx today</button>
+          <button class="op-chip" data-area="FTTx pending" aria-pressed="false">Pending sites</button>
+        </div>
+        <div class="op-scroll">
+          <table class="op-tbl" id="tbl-remarks" data-source="remarks" data-row-key="report_date,id">
+            <thead><tr>
+              <th data-field="area">Area</th><th data-field="topic">Topic</th><th data-field="date">Date</th><th data-field="sites" class="num">Sites</th><th data-source="remarks_pct" data-field="pct_of_pending" class="num">% of pending</th><th data-field="remark">Remark</th>
+            </tr></thead><tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="op-card" id="pending">
+        <h2>Pending sites by reason</h2>
+        <p class="op-note">Yangon remain/pending from <span data-source="report_info" data-field="prev_date" data-fill="d">—</span>.</p>
+        <div class="op-chart" id="chart-pending" data-source="pending_sites"></div>
+      </div>
+      <div class="op-card op-wide" id="cable">
+        <h2>Cable cutting &amp; cleaning</h2>
+        <p class="op-note">Today’s plan: <b data-source="cable_by_stage" data-where="stage=Plan" data-field="jobs" data-fill="n">—</b> jobs, impact <b data-source="cable_by_stage" data-where="stage=Plan" data-field="impact_ca1" data-fill="n">—</b> CA1 and <b data-source="cable_by_stage" data-where="stage=Plan" data-field="impact_ca2_otb" data-fill="n">—</b> CA2/OTB. Yesterday done: <b data-source="cable_by_stage" data-where="stage=Done" data-field="jobs" data-fill="n">—</b> jobs.</p>
+        <div class="op-tools">
+          <button class="op-chip op-cchip" data-stage="Plan" aria-pressed="true">Today’s plan</button>
+          <button class="op-chip op-cchip" data-stage="Done" aria-pressed="false">Done yesterday</button>
+          <button class="op-chip op-cchip" data-stage="" aria-pressed="false">Both</button>
+        </div>
+        <div class="op-scroll">
+          <table class="op-tbl" id="tbl-cable" data-source="cable_works" data-row-key="report_date,job">
+            <thead><tr><th data-field="stage">Stage</th><th data-field="region">Region</th><th data-field="tsp">Tsp</th><th data-field="work_type">Type</th><th data-field="street">Street and road</th><th data-field="hc" class="num op-sec">HC</th><th data-field="labour" class="num op-sec">Labour</th><th data-field="impact_olt" class="num">OLT</th><th data-field="impact_ca1" class="num">CA1</th><th data-field="impact_ca2_otb" class="num">CA2/OTB</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BOX OPS -->
+  <section class="op-page" id="boxops" hidden>
+    <div class="op-grid">
+      <div class="op-card op-wide" id="backlog">
+        <h2>Box-Ops site planning by region &amp; township</h2>
+        <p class="op-note"><span data-source="report_info" data-field="report_date" data-fill="d">—</span>, <span data-source="report_info" data-field="box_time" data-fill="t">—</span>. Tickets and POI: blog, planned today and plan %, then resources. Region subtotals and the grand total are summed from the township rows; their ratios are recomputed the same way as the report (Car/Team = SI team ÷ car, Team/Labour = labour ÷ SI team).</p>
+        <div class="op-scroll" style="max-height:none">
+          <table class="op-tbl op-pv" id="tbl-pv" data-source="box_region_table" data-row-key="report_date,row_id">
+            <thead>
+              <tr class="op-grp"><th colspan="2"></th><th colspan="3" class="op-gt">Tickets</th><th colspan="3" class="op-gp">POI</th><th colspan="5" class="op-gr op-sec">Resources</th></tr>
+              <tr><th data-field="region">Region</th><th data-field="tsp">Township</th>
+              <th data-field="ticket_blog" class="num">Blog</th><th data-field="plan_tkts" class="num">Planned</th><th data-field="plan_pct_tkt" class="num">Plan %</th>
+              <th data-field="poi_blog" class="num">Blog</th><th data-field="plan_poi" class="num">Planned</th><th data-field="plan_pct_poi" class="num">Plan %</th><th data-field="si_team" class="num op-sec">SI team</th><th data-field="car" class="num op-sec">Car</th><th data-field="labour" class="num op-sec">Labour</th><th data-field="car_per_team" class="num op-sec">Car/team</th><th data-field="team_per_labour" class="num op-sec">Team/labour</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="op-card op-wide" id="box-attention">
+        <h2>Box-Ops attention</h2>
+        <p class="op-note">Flagged automatically: ticket plan under 60% (under 50% is high), POI plan under 10% with 50+ POI blog, 1.8+ SI teams per car, fewer labour than SI teams, and the 3 biggest ticket backlogs left after today’s plan.</p>
+        <div class="op-scroll">
+          <table class="op-tbl" id="tbl-att" data-source="box_attention" data-row-key="report_date,id">
+            <thead><tr><th data-field="level">Level</th><th data-field="region">Region</th><th data-field="tsp">Township</th><th data-field="issue">Issue</th><th data-field="detail">Detail</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      </div>
+  </section>
+</div>
 
 <script>
-const $ = s => document.querySelector(s);
-const COLORS = ["#0D7C87","#16304A","#B86E00","#2E7D4F","#B3392D","#6B4FA0","#3A6EA5","#7A6A55"];
-const LOCAL_KEY = "yzo-portals";
-const useCloud = !!(CONFIG.SUPABASE_URL && CONFIG.SUPABASE_KEY && window.supabase);
-const db = useCloud ? window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY) : null;
-
-let portals = [], editing = false, signedIn = false, currentId = null, pickedColor = COLORS[0];
-
-document.title = CONFIG.title;
-$("#title").textContent = CONFIG.title;
-$("#subtitle").textContent = CONFIG.subtitle;
-
-if (!useCloud) {
-  const n = $("#notice");
-  n.hidden = false;
-  n.textContent = "Portals you add are saved on this browser only. Connect Supabase in the settings so your whole team sees the same list.";
-}
-
-/* ---------- data ---------- */
-const CACHE_KEY = "impl-ops-portals-cache";
-async function load() {
-  if (useCloud) {
-    // Show the last saved list instantly, then refresh it in the background
-    let shown = false;
-    if (!portals.length) {
-      try { const c = JSON.parse(localStorage.getItem(CACHE_KEY) || "null"); if (Array.isArray(c) && c.length) { portals = c; render(); shown = true; } } catch {}
-    }
-    const { data, error } = await db.from("portals").select("*").order("sort_order").order("name");
-    if (error) { if (!shown) showError("Couldn’t load portals: " + error.message + ". Check the Supabase link and key in the settings."); return; }
-    portals = data || [];
-    try { localStorage.setItem(CACHE_KEY, JSON.stringify(portals)); } catch {}
-  } else {
-    try { portals = JSON.parse(localStorage.getItem(LOCAL_KEY) || "[]"); } catch { portals = []; }
-  }
-  render();
-}
-function saveLocal(){ try { localStorage.setItem(LOCAL_KEY, JSON.stringify(portals)); } catch {} }
-
-async function upsert(p) {
-  if (useCloud) {
-    const { id, ...fields } = p;
-    const q = id ? db.from("portals").update(fields).eq("id", id) : db.from("portals").insert(fields);
-    const { error } = await q;
-    if (error) throw error;
-    await load();
-  } else {
-    if (p.id) portals = portals.map(x => x.id === p.id ? p : x);
-    else portals.push({ ...p, id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) });
-    saveLocal(); render();
-  }
-}
-async function remove(id) {
-  if (useCloud) {
-    const { error } = await db.from("portals").delete().eq("id", id);
-    if (error) throw error;
-    await load();
-  } else { portals = portals.filter(x => x.id !== id); saveLocal(); render(); }
-}
-
-/* ---------- render ---------- */
-const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
-const safeUrl = u => /^https?:\/\//i.test(u) ? u : "#";
-
-function render() {
-  const q = $("#search").value.trim().toLowerCase();
-  const list = portals
-    .filter(p => !q || [p.name, p.description, p.category].join(" ").toLowerCase().includes(q))
-    .sort((a,b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name.localeCompare(b.name));
-  const box = $("#groups");
-  $("#cats").innerHTML = [...new Set(portals.map(p => p.category).filter(Boolean))].map(c => `<option value="${esc(c)}">`).join("");
-
-  if (!portals.length) {
-    box.innerHTML = `<div class="empty"><b>No portals yet</b>Click “Edit portals”, then “+ New portal” to add your first one.</div>`;
-    return;
-  }
-  if (!list.length) { box.innerHTML = `<div class="empty"><b>No match</b>No portal matches “${esc(q)}”.</div>`; return; }
-
-  const groups = {};
-  list.forEach(p => (groups[p.category || "General"] ??= []).push(p));
-  box.innerHTML = Object.entries(groups).map(([cat, items]) => `
-    <section class="group">
-      <h2>${esc(cat)} <span>${items.length} portal${items.length > 1 ? "s" : ""}</span></h2>
-      <div class="list">
-        ${items.map(p => `
-          <a class="portal" href="${esc(safeUrl(p.url))}" style="--c:${esc(p.color || COLORS[0])}" data-id="${esc(p.id)}">
-            <span class="ic" aria-hidden="true">${esc(p.icon || "📁")}</span>
-            <span class="tx"><b>${esc(p.name)}</b>${p.description ? `<small>${esc(p.description)}</small>` : ""}</span>
-            <span class="edit-tools"><button class="mini" type="button" data-edit="${esc(p.id)}">Edit</button></span>
-          </a>`).join("")}
-      </div>
-    </section>`).join("");
-}
-
-function showError(msg){ $("#groups").innerHTML = `<div class="empty"><b>Something went wrong</b>${esc(msg)}</div>`; }
-function toast(msg){ const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 2200); }
-
-/* ---------- edit mode ---------- */
-function setEditing(on) {
-  editing = on;
-  document.body.classList.toggle("editing", on);
-  $("#addBtn").hidden = !on;
-  $("#editBtn").textContent = on ? "Done editing" : "Edit portals";
-}
-$("#editBtn").onclick = () => {
-  if (editing) { setEditing(false); return; }
-  if (!signedIn) { $("#loginErr").textContent = ""; $("#lPass").value = ""; $("#loginDlg").showModal(); return; }
-  setEditing(true);
-};
-
-/* ---------- edit password ---------- */
-if (useCloud) {
-  const isEditor = s => !!(s && s.user && s.user.email === CONFIG.EDITOR_EMAIL);
-  db.auth.getSession().then(({ data }) => { signedIn = isEditor(data.session); });
-  db.auth.onAuthStateChange((_e, session) => { signedIn = isEditor(session); });
-} else {
-  try { signedIn = sessionStorage.getItem("yzo-edit") === "1"; } catch {}
-}
-async function sha256(text) {
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
-  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("");
-}
-$("#loginCancel").onclick = () => $("#loginDlg").close();
-$("#loginForm").onsubmit = async e => {
-  e.preventDefault();
-  const pass = $("#lPass").value;
-  $("#loginErr").textContent = "Checking…";
-  if (useCloud) {
-    if (!CONFIG.EDITOR_EMAIL) { $("#loginErr").textContent = "Add the editor email in the settings first."; return; }
-    const { error } = await db.auth.signInWithPassword({ email: CONFIG.EDITOR_EMAIL, password: pass });
-    if (error) { $("#loginErr").textContent = "Wrong password. Try again."; return; }
-  } else {
-    if ((await sha256(pass)) !== EDIT_PASSWORD_HASH) { $("#loginErr").textContent = "Wrong password. Try again."; return; }
-    try { sessionStorage.setItem("yzo-edit", "1"); } catch {}
-  }
-  signedIn = true; $("#loginDlg").close(); setEditing(true); toast("Edit mode on");
-};
-
-/* ---------- portal form ---------- */
-function drawSwatches() {
-  $("#swatches").innerHTML = COLORS.map(c => `<button type="button" class="sw" style="--s:${c}" data-c="${c}" aria-label="Color ${c}" aria-pressed="${c === pickedColor}"></button>`).join("");
-}
-$("#swatches").onclick = e => { const c = e.target.dataset.c; if (c) { pickedColor = c; drawSwatches(); } };
-
-function openForm(p) {
-  currentId = p?.id || null;
-  $("#dlgTitle").textContent = p ? "Edit portal" : "New portal";
-  $("#fName").value = p?.name || "";
-  $("#fUrl").value = p?.url || "";
-  $("#fDesc").value = p?.description || "";
-  $("#fCat").value = p?.category || "";
-  $("#fIcon").value = p?.icon || "";
-  $("#fOrder").value = p?.sort_order ?? (portals.length + 1);
-  pickedColor = p?.color || COLORS[portals.length % COLORS.length];
-  $("#delBtn").hidden = !p;
-  $("#formErr").textContent = "";
-  drawSwatches();
-  $("#portalDlg").showModal();
-}
-$("#addBtn").onclick = () => openForm(null);
-$("#cancelBtn").onclick = () => $("#portalDlg").close();
-
-$("#groups").addEventListener("click", e => {
-  const id = e.target.dataset?.edit;
-  if (id) { e.preventDefault(); openForm(portals.find(p => String(p.id) === id)); return; }
-  if (editing && e.target.closest(".portal")) e.preventDefault(); // don’t leave the page while editing
+// ---------- calculations ----------
+dash.calc('fleet_totals', {
+  inputs: ['fleet_by_team'], title: 'YGN fleet totals',
+  description: 'Per report day: Request, plan and actual cars summed over all YGN teams; actual as a share of request.',
+  fn: (fleet_by_team) => {
+    const perDay = (fleet_by_team) => {
+      const s = (k) => fleet_by_team.reduce((a, r) => a + Number(r[k] || 0), 0);
+      return [{ request: s('request'), plan: s('plan'), actual: s('actual'), actual_pct: s('actual') / s('request'), plan_use_pct: s('actual') / s('plan') }];
+    };
+    const days = [...new Set(fleet_by_team.map((r) => r.report_date))];
+    return days.flatMap((d) => perDay(fleet_by_team.filter((r) => r.report_date === d)).map((x) => ({ report_date: d, ...x })));
+  },
+});
+dash.calc('fleet_by_priority', {
+  inputs: ['fleet_by_team'], title: 'YGN cars by priority',
+  description: 'Per report day: Request, plan and actual cars summed per priority group.',
+  fn: (fleet_by_team) => {
+    const perDay = (fleet_by_team) => {
+      const out = [];
+      fleet_by_team.forEach((r) => {
+        let g = out.find((o) => o.priority === r.priority);
+        if (!g) { g = { priority: r.priority, request: 0, plan: 0, actual: 0 }; out.push(g); }
+        g.request += Number(r.request); g.plan += Number(r.plan); g.actual += Number(r.actual);
+      });
+      return out;
+    };
+    const days = [...new Set(fleet_by_team.map((r) => r.report_date))];
+    return days.flatMap((d) => perDay(fleet_by_team.filter((r) => r.report_date === d)).map((x) => ({ report_date: d, ...x })));
+  },
+});
+dash.calc('city_short', {
+  inputs: ['city_cars'], title: 'Cities short of cars',
+  description: 'Per report day: Cities whose actual cars are below the request, with the shortfall.',
+  fn: (city_cars) => {
+    const perDay = (city_cars) => city_cars.filter((r) => r.city !== 'All Cities' && Number(r.actual) < Number(r.request))
+      .map((r) => ({ city: r.city, short: Number(r.request) - Number(r.actual) }));
+    const days = [...new Set(city_cars.map((r) => r.report_date))];
+    return days.flatMap((d) => perDay(city_cars.filter((r) => r.report_date === d)).map((x) => ({ report_date: d, ...x })));
+  },
+});
+dash.calc('workshop_cars', {
+  inputs: ['remarks', 'fleet_by_team'], title: 'Cars in workshop',
+  description: 'Per report day: Count of remarks with the topic "Car in workshop", and that count as a share of YGN cars assigned.',
+  fn: (remarks, fleet_by_team) => {
+    const perDay = (remarks, fleet_by_team) => {
+      const cars = remarks.filter((r) => r.topic === 'Car in workshop').length;
+      const ygn = fleet_by_team.reduce((a, r) => a + Number(r.actual), 0);
+      return [{ cars, pct_of_ygn: cars / ygn }];
+    };
+    const days = [...new Set([...remarks, ...fleet_by_team].map((r) => r.report_date))];
+    return days.flatMap((d) => perDay(remarks.filter((r) => r.report_date === d), fleet_by_team.filter((r) => r.report_date === d)).map((x) => ({ report_date: d, ...x })));
+  },
+});
+dash.calc('fttx_totals', {
+  inputs: ['fttx_blog'], title: 'FTTx blog totals',
+  description: 'Per report day: Teams, cars and blog counts summed over all FTTx regions.',
+  fn: (fttx_blog) => {
+    const perDay = (fttx_blog) => {
+      const s = (k) => fttx_blog.reduce((a, r) => a + Number(r[k] || 0), 0);
+      return [{ team: s('team'), car: s('car'), broken_highloss: s('broken_highloss'), migration: s('migration'), pending: s('pending'), pending_pct: s('pending') / (s('broken_highloss') + s('migration') + s('pending')) }];
+    };
+    const days = [...new Set(fttx_blog.map((r) => r.report_date))];
+    return days.flatMap((d) => perDay(fttx_blog.filter((r) => r.report_date === d)).map((x) => ({ report_date: d, ...x })));
+  },
+});
+dash.calc('pending_total', {
+  inputs: ['pending_sites'], title: 'Pending sites total',
+  description: 'Per report day: Sites still pending from the previous day, summed over all reasons.',
+  fn: (pending_sites) => {
+    const perDay = (pending_sites) => [{ sites: pending_sites.reduce((a, r) => a + Number(r.sites), 0) }];
+    const days = [...new Set(pending_sites.map((r) => r.report_date))];
+    return days.flatMap((d) => perDay(pending_sites.filter((r) => r.report_date === d)).map((x) => ({ report_date: d, ...x })));
+  },
+});
+dash.calc('box_totals', {
+  inputs: ['box_ops'], title: 'Box-Ops totals',
+  description: 'Per report day: Ticket blog and planned tickets summed over township rows (R1/R1s total rows left out); planned share.',
+  fn: (box_ops) => {
+    const perDay = (box_ops) => {
+      const rows = box_ops.filter((r) => !r.is_total);
+      const s = (k) => rows.reduce((a, r) => a + Number(r[k] || 0), 0);
+      return [{ ticket_blog: s('ticket_blog'), plan_tkts: s('plan_tkts'), plan_pct: s('plan_tkts') / s('ticket_blog'), poi_blog: s('poi_blog'), plan_poi: s('plan_poi'), poi_pct: s('plan_poi') / s('poi_blog') }];
+    };
+    const days = [...new Set(box_ops.map((r) => r.report_date))];
+    return days.flatMap((d) => perDay(box_ops.filter((r) => r.report_date === d)).map((x) => ({ report_date: d, ...x })));
+  },
+});
+dash.calc('cable_by_stage', {
+  inputs: ['cable_works'], title: 'Cable jobs by stage',
+  description: 'Per report day: Number of cable cutting/cleaning jobs and their CA1 and CA2/OTB impact, per stage.',
+  fn: (cable_works) => {
+    const perDay = (cable_works) => {
+      const out = [];
+      cable_works.forEach((r) => {
+        let g = out.find((o) => o.stage === r.stage);
+        if (!g) { g = { stage: r.stage, jobs: 0, impact_ca1: 0, impact_ca2_otb: 0 }; out.push(g); }
+        g.jobs += 1; g.impact_ca1 += Number(r.impact_ca1); g.impact_ca2_otb += Number(r.impact_ca2_otb);
+      });
+      return out;
+    };
+    const days = [...new Set(cable_works.map((r) => r.report_date))];
+    return days.flatMap((d) => perDay(cable_works.filter((r) => r.report_date === d)).map((x) => ({ report_date: d, ...x })));
+  },
 });
 
-$("#portalForm").onsubmit = async e => {
-  e.preventDefault();
-  let url = $("#fUrl").value.trim();
-  if (url && !/^https?:\/\//i.test(url)) url = "https://" + url;
-  const p = {
-    name: $("#fName").value.trim(),
-    url,
-    description: $("#fDesc").value.trim(),
-    category: $("#fCat").value.trim() || "General",
-    icon: $("#fIcon").value.trim() || "📁",
-    color: pickedColor,
-    sort_order: parseInt($("#fOrder").value, 10) || 0
+dash.calc('city_total', {
+  inputs: ['city_cars'], title: 'All cities fill rate',
+  description: 'Per report day: All Cities actual cars divided by All Cities request, unrounded.',
+  fn: (city_cars) => {
+    const perDay = (city_cars) => city_cars.filter((r) => r.city === 'All Cities').map((r) => ({ actual_pct: Number(r.actual) / Number(r.request) }));
+    const days = [...new Set(city_cars.map((r) => r.report_date))];
+    return days.flatMap((d) => perDay(city_cars.filter((r) => r.report_date === d)).map((x) => ({ report_date: d, ...x })));
+  },
+});
+dash.calc('pending_top', {
+  inputs: ['pending_sites'], title: 'Biggest pending reason',
+  description: 'Per report day: The pending reason with the most sites and its share of all pending sites (first one on a tie).',
+  fn: (pending_sites) => {
+    const perDay = (pending_sites) => {
+      const total = pending_sites.reduce((a, r) => a + Number(r.sites), 0);
+      const top = pending_sites.reduce((a, r) => (Number(r.sites) > Number(a.sites) ? r : a), pending_sites[0]);
+      return top ? [{ reason: top.reason, pct: Number(top.sites) / total }] : [];
+    };
+    const days = [...new Set(pending_sites.map((r) => r.report_date))];
+    return days.flatMap((d) => perDay(pending_sites.filter((r) => r.report_date === d)).map((x) => ({ report_date: d, ...x })));
+  },
+});
+dash.calc('remarks_pct', {
+  inputs: ['remarks', 'pending_sites'], title: 'Remark share of pending',
+  description: 'Per report day: Sites named in each remark as a share of all sites pending from the previous day.',
+  fn: (remarks, pending_sites) => {
+    const perDay = (remarks, pending_sites) => {
+      const total = pending_sites.reduce((a, r) => a + Number(r.sites), 0);
+      return remarks.filter((r) => r.sites != null).map((r) => ({ id: r.id, pct_of_pending: Number(r.sites) / total }));
+    };
+    const days = [...new Set(remarks.map((r) => r.report_date))];
+    return days.flatMap((d) => perDay(remarks.filter((r) => r.report_date === d), pending_sites.filter((r) => r.report_date === d)).map((x) => ({ report_date: d, ...x })));
+  },
+});
+dash.calc('notes_pct', {
+  inputs: ['fleet_notes', 'fleet_by_team'], title: 'Plan gap as % of plan',
+  description: 'Per report day: Each fleet note value divided by total planned YGN cars.',
+  fn: (fleet_notes, fleet_by_team) => {
+    const perDay = (fleet_notes, fleet_by_team) => {
+      const plan = fleet_by_team.reduce((a, r) => a + Number(r.plan), 0);
+      return fleet_notes.map((r) => ({ metric: r.metric, pct_of_plan: Number(r.value) / plan }));
+    };
+    const days = [...new Set(fleet_notes.map((r) => r.report_date))];
+    return days.flatMap((d) => perDay(fleet_notes.filter((r) => r.report_date === d), fleet_by_team.filter((r) => r.report_date === d)).map((x) => ({ report_date: d, ...x })));
+  },
+});
+
+dash.calc('box_region_table', {
+  inputs: ['box_ops'], title: 'Box-Ops planned vs blog',
+  description: 'Per report day: Township rows grouped by region with region subtotals and a grand total summed from townships (report total rows left out); plan % = planned ÷ blog; township ratios as reported, subtotal ratios = SI team ÷ car and labour ÷ SI team.',
+  fn: (box_ops) => {
+    const perDay = (box_ops) => {
+      const rows = box_ops.filter((r) => !r.is_total);
+      const pct = (a, b) => (b ? a / b : null);
+      const line = (region, tsp, v, kind) => ({ row_id: region + ' / ' + tsp, region, tsp, kind,
+        ticket_blog: v.tb, plan_tkts: v.pt, plan_pct_tkt: pct(v.pt, v.tb),
+        poi_blog: v.pb, plan_poi: v.pp, plan_pct_poi: pct(v.pp, v.pb),
+        si_team: v.si, car: v.car, labour: v.lab, car_per_team: pct(v.si, v.car), team_per_labour: pct(v.lab, v.si),
+        tkt_left: v.tb - v.pt, poi_left: v.pb - v.pp, townships: v.n });
+      const sum = (rs) => rs.reduce((a, r) => ({ tb: a.tb + Number(r.ticket_blog), pt: a.pt + Number(r.plan_tkts), pb: a.pb + Number(r.poi_blog), pp: a.pp + Number(r.plan_poi),
+        si: a.si + Number(r.si_team), car: a.car + Number(r.car), lab: a.lab + Number(r.labour), n: a.n + 1 }), { tb: 0, pt: 0, pb: 0, pp: 0, si: 0, car: 0, lab: 0, n: 0 });
+      const out = [];
+      const regions = [...new Set(rows.map((r) => r.region))];
+      regions.forEach((reg) => {
+        const rs = rows.filter((r) => r.region === reg);
+        rs.forEach((r) => out.push({ ...line(reg, r.tsp, sum([r]), 'tsp'), car_per_team: Number(r.car_per_team), team_per_labour: Number(r.team_per_labour) }));
+        out.push(line(reg, 'Subtotal', sum(rs), 'sub'));
+      });
+      out.push(line('All regions', 'Grand total', sum(rows), 'grand'));
+      return out;
+    };
+    const days = [...new Set(box_ops.map((r) => r.report_date))];
+    return days.flatMap((d) => perDay(box_ops.filter((r) => r.report_date === d)).map((x) => ({ report_date: d, ...x })));
+  },
+});
+
+dash.calc('box_attention', {
+  inputs: ['box_ops'], title: 'Box-Ops attention list',
+  description: 'Per report day: Township rows flagged by fixed rules: ticket plan <60% (<50% high), POI plan <10% with 50+ POI blog, SI team/car ≥1.8, labour < SI team, top 3 tickets left.',
+  fn: (box_ops) => {
+    const perDay = (box_ops) => {
+      const rows = box_ops.filter((r) => !r.is_total);
+      const pc = (v) => Math.round(Number(v) * 100) + '%';
+      const out = [];
+      const add = (level, r, issue, detail) => out.push({ id: 'A' + String(out.length + 1).padStart(2, '0'), level, region: r.region, tsp: r.tsp, issue, detail });
+      rows.forEach((r) => {
+        const tp = Number(r.plan_tkts) / Number(r.ticket_blog);
+        if (tp < 0.6) add(tp < 0.5 ? 'High' : 'Watch', r, 'Low ticket plan', `${r.plan_tkts} of ${r.ticket_blog} tickets planned (${pc(tp)})`);
+      });
+      rows.forEach((r) => {
+        const pp = Number(r.plan_poi) / Number(r.poi_blog);
+        if (Number(r.poi_blog) >= 50 && pp < 0.1) add('High', r, 'POI backlog barely planned', `${r.plan_poi} of ${r.poi_blog} POI planned (${pc(pp)})`);
+      });
+      rows.forEach((r) => { if (Number(r.car_per_team) >= 1.8) add('Watch', r, 'Not enough cars', `${r.si_team} SI teams share ${r.car} car(s)`); });
+      rows.forEach((r) => { if (Number(r.labour) < Number(r.si_team)) add('Watch', r, 'Not enough labour', `${r.labour} labour for ${r.si_team} SI teams`); });
+      rows.map((r) => ({ r, left: Number(r.ticket_blog) - Number(r.plan_tkts) })).sort((a, b) => b.left - a.left).slice(0, 3)
+        .forEach(({ r, left }) => add('Info', r, 'Big ticket backlog left', `${left} tickets left after today’s plan`));
+      const rank = { High: 0, Watch: 1, Info: 2 };
+      return out.sort((a, b) => rank[a.level] - rank[b.level]);
+    };
+    const days = [...new Set(box_ops.map((r) => r.report_date))];
+    return days.flatMap((d) => perDay(box_ops.filter((r) => r.report_date === d)).map((x) => ({ report_date: d, ...x })));
+  },
+});
+
+dash.calc('box_top3', {
+  inputs: ['box_ops'], title: 'Top 3 Box-Ops issues',
+  description: 'Per report day: Three picked gaps: townships with 50+ POI blog and <10% planned (grouped); the township with most tickets left; the township with both car and labour short and most SI teams.',
+  fn: (box_ops) => {
+    const perDay = (box_ops) => {
+      const rows = box_ops.filter((r) => !r.is_total);
+      const n = Number, out = [];
+      const poi = rows.filter((r) => n(r.poi_blog) >= 50 && n(r.plan_poi) / n(r.poi_blog) < 0.1);
+      if (poi.length) {
+        const pb = poi.reduce((a, r) => a + n(r.poi_blog), 0), pp = poi.reduce((a, r) => a + n(r.plan_poi), 0);
+        out.push({ issue: 'POI backlog barely planned', where: poi.map((r) => `${r.tsp} (${r.region})`).join(', '),
+          detail: `${pp} of ${pb} POI planned (${Math.round(pp / pb * 100)}%), ${pb - pp} left`, action: 'Add POI slots to tomorrow’s plan for these townships' });
+      }
+      const big = rows.slice().sort((a, b) => (n(b.ticket_blog) - n(b.plan_tkts)) - (n(a.ticket_blog) - n(a.plan_tkts)))[0];
+      if (big) out.push({ issue: 'Biggest ticket backlog', where: `${big.tsp} (${big.region})`,
+        detail: `${n(big.ticket_blog) - n(big.plan_tkts)} tickets left after plan (${big.plan_tkts} of ${big.ticket_blog}); ${big.si_team} SI teams on ${big.car} cars`, action: 'Add cars or move teams from fully planned townships' });
+      const res = rows.filter((r) => n(r.car_per_team) >= 1.8 && n(r.labour) < n(r.si_team)).sort((a, b) => n(b.si_team) - n(a.si_team))[0];
+      if (res) out.push({ issue: 'Short of cars and labour', where: `${res.tsp} (${res.region})`,
+        detail: `${res.si_team} SI teams with ${res.car} cars and ${res.labour} labour`, action: 'Assign extra car and labour before dispatch' });
+      return out.map((r, i) => ({ rank: i + 1, ...r }));
+    };
+    const days = [...new Set(box_ops.map((r) => r.report_date))];
+    return days.flatMap((d) => perDay(box_ops.filter((r) => r.report_date === d)).map((x) => ({ report_date: d, ...x })));
+  },
+});
+
+// ---------- helpers ----------
+const fmtN = d3.format(',');
+const FMT = { n: (v) => fmtN(v), p: (v) => d3.format('.0%')(v), p1: (v) => d3.format('.1~%')(v), D: (v) => d3.utcFormat('%-d %b %Y')(new Date(v)), t: (v) => String(v), d: (v) => d3.utcFormat('%-d %b')(new Date(v)), r: (v) => d3.format('.1~f')(v) };
+const enc = (v) => encodeURIComponent(String(v));
+
+function fillMarks() {
+  document.querySelectorAll('.op [data-fill]').forEach((el) => {
+    const d = dash.data(el.dataset.source);
+    el.classList.toggle('dash-skeleton', d.status === 'loading');
+    if (d.status !== 'ok') { el.textContent = '—'; return; }
+    if (el.dataset.w0 === undefined) el.dataset.w0 = el.dataset.where || '';
+    let w = 'report_date=' + enc(DAY || '') + (el.dataset.w0 ? '&' + el.dataset.w0 : '');
+    if (el.dataset.pick) {
+      const first = d.data.find((r) => r.report_date === DAY);
+      if (first) w += '&' + el.dataset.pick + '=' + enc(first[el.dataset.pick]);
+    }
+    el.dataset.where = w;
+    let row;
+    if (el.dataset.where) {
+      const conds = el.dataset.where.split('&').map((p) => { const i = p.indexOf('='); return [p.slice(0, i), decodeURIComponent(p.slice(i + 1))]; });
+      row = d.data.find((r) => conds.every(([k, v]) => String(r[k]) === v));
+    } else row = d.data[Number(el.dataset.row || 0)];
+    const v = row ? row[el.dataset.field] : null;
+    el.textContent = v == null ? '—' : FMT[el.dataset.fill](v);
+  });
+  const cs = dash.data('city_short');
+  document.querySelector('.op-short').hidden = !(cs.status === 'ok' && cs.data.some((r) => r.report_date === DAY));
+}
+
+function failRow(body, n) {
+  const td = body.insertRow().insertCell(); td.colSpan = n; td.className = 'op-fail';
+  const dot = document.createElement('span'); dot.className = 'op-dot'; td.append(dot, 'Failed to load');
+}
+
+function table(sel, id, cols, opts = {}) {
+  const tb = document.querySelector(sel), body = tb.tBodies[0];
+  const d = dash.data(id);
+  body.replaceChildren();
+  if (d.status !== 'ok') { if (d.status !== 'loading') failRow(body, cols.length); return; }
+  let rows = d.data.filter((r) => r.report_date === DAY);
+  if (opts.filter) rows = rows.filter(opts.filter);
+  if (opts.sort) rows.sort(opts.sort);
+  rows.forEach((r) => {
+    const tr = body.insertRow();
+    tr.dataset.key = enc(DAY) + ',' + enc(opts.key ? opts.key(r) : r[cols[0].f]);
+    if (opts.rowClass) tr.className = opts.rowClass(r) || '';
+    cols.forEach((c) => {
+      const td = tr.insertCell();
+      if (c.num) td.className = 'num';
+      if (c.cls) td.classList.add(...c.cls.split(' '));
+      if (c.render) c.render(td, r[c.f], r);
+      else { const v = r[c.f]; td.textContent = v == null ? '' : c.fmt ? c.fmt(v) : String(v); }
+    });
+  });
+}
+
+function pctBar(color) {
+  return (td, v) => {
+    const w = document.createElement('span'); w.className = 'op-bar';
+    const t = document.createElement('span'); t.textContent = FMT.p(v);
+    const i = document.createElement('i'), s = document.createElement('s');
+    s.style.width = Math.min(100, Number(v) * 100) + '%';
+    s.style.background = Number(v) >= 0.8 ? 'var(--color-ok)' : Number(v) >= 0.5 ? 'var(--color-warn)' : 'var(--color-bad)';
+    t.className = 'op-pill ' + (Number(v) >= 0.8 ? 'ok' : Number(v) >= 0.5 ? 'warn' : 'bad');
+    i.append(s); w.append(t, i); td.append(w);
   };
-  if (!p.name || !p.url) { $("#formErr").textContent = "Add a portal name and a link."; return; }
-  if (currentId) p.id = currentId;
-  $("#saveBtn").disabled = true;
-  try { await upsert(p); $("#portalDlg").close(); toast(currentId ? "Portal updated" : "Portal added"); }
-  catch (err) { $("#formErr").textContent = "Couldn’t save: " + err.message; }
-  finally { $("#saveBtn").disabled = false; }
-};
+}
 
-$("#delBtn").onclick = async () => {
-  const p = portals.find(x => x.id === currentId);
-  if (!p || !confirm(`Delete “${p.name}” from the list? The portal website itself won’t be affected.`)) return;
-  try { await remove(currentId); $("#portalDlg").close(); toast("Portal deleted"); }
-  catch (err) { $("#formErr").textContent = "Couldn’t delete: " + err.message; }
-};
+function chartState(box, id) {
+  box.replaceChildren();
+  const d = dash.data(id);
+  if (d.status === 'loading') { box.classList.add('dash-skeleton'); return null; }
+  box.classList.remove('dash-skeleton');
+  if (d.status !== 'ok') {
+    const f = document.createElement('div'); f.className = 'op-fail'; f.style.cssText = 'display:flex;align-items:center;justify-content:center;min-height:12rem';
+    const dot = document.createElement('span'); dot.className = 'op-dot'; f.append(dot, 'Failed to load'); box.append(f); return null;
+  }
+  return box.clientWidth ? d.data.filter((r) => r.report_date === DAY) : null;
+}
 
-$("#search").addEventListener("input", render);
-load();
+function tooltip(box) {
+  const tip = document.createElement('div'); tip.className = 'op-tip'; tip.hidden = true; box.append(tip);
+  return {
+    show(ev, head, lines) {
+      tip.replaceChildren();
+      const h = document.createElement('div'); h.className = 'h'; h.textContent = head; tip.append(h);
+      lines.forEach(([c, name, val]) => {
+        const l = document.createElement('div');
+        if (c) { const sw = document.createElement('span'); sw.style.cssText = `display:inline-block;width:.55rem;height:.55rem;border-radius:2px;margin-right:.35rem;background:${c}`; l.append(sw); }
+        l.append(`${name}: `); const b = document.createElement('b'); b.textContent = val; l.append(b); tip.append(l);
+      });
+      tip.hidden = false;
+      const [x, y] = d3.pointer(ev, box);
+      const tw = tip.offsetWidth, bw = box.clientWidth;
+      tip.style.left = Math.max(0, Math.min(bw - tw, x + 12)) + 'px';
+      tip.style.top = Math.max(0, y - tip.offsetHeight - 8) + 'px';
+    },
+    hide() { tip.hidden = true; },
+  };
+}
+
+function measure(svg, labels) {
+  const g = svg.append('g');
+  const w = d3.max(labels, (l) => g.append('text').text(l).node().getComputedTextLength()) || 0;
+  g.remove(); return w;
+}
+
+// Horizontal bars: rows -> [{label, total?, value}]
+function hbars(box, rows, { color, showTotal, end, tipLines }) {
+  const W = box.clientWidth, rowH = 30, m = { t: 4, r: 8, b: 4 };
+  const H = rows.length * rowH + m.t + m.b;
+  box.style.minHeight = H + 'px';
+  const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('height', H);
+  m.l = measure(svg, rows.map((r) => r.label)) + 10;
+  const endW = measure(svg, rows.map(end)) + 8;
+  const max = d3.max(rows, (r) => Math.max(r.value, r.total || 0)) || 1;
+  const x = d3.scaleLinear([0, max], [m.l, Math.max(m.l + 20, W - m.r - endW)]);
+  const y = d3.scaleBand(rows.map((r, i) => i), [m.t, H - m.b]).padding(0.3);
+  const tt = tooltip(box);
+  const g = svg.selectAll('g.r').data(rows).join('g').attr('transform', (r, i) => `translate(0,${y(i)})`);
+  g.append('text').attr('x', m.l - 10).attr('y', y.bandwidth() / 2).attr('dy', '0.35em').attr('text-anchor', 'end').text((r) => r.label);
+  if (showTotal) g.append('rect').attr('x', m.l).attr('height', y.bandwidth()).attr('rx', 4).attr('width', (r) => Math.max(0, x(r.total) - m.l)).attr('fill', 'var(--cds-chart-muted)');
+  g.append('rect').attr('x', m.l).attr('height', y.bandwidth()).attr('rx', 4).attr('width', (r) => Math.max(0, x(r.value) - m.l)).attr('fill', (r, i) => (typeof color === 'function' ? color(r, i) : color));
+  g.append('text').attr('class', 'v').attr('x', (r) => x(Math.max(r.value, r.total || 0)) + 6).attr('y', y.bandwidth() / 2).attr('dy', '0.35em').text(end);
+  g.append('rect').attr('x', 0).attr('width', W).attr('height', y.bandwidth()).attr('fill', 'transparent')
+    .on('mousemove', (ev, r) => tt.show(ev, r.label, tipLines(r))).on('mouseleave', () => tt.hide());
+}
+
+// ---------- page drawing ----------
+let areaFilter = '', q = '', cableStage = 'Plan';
+
+let PCT = {};
+function drawBoxSummary() {
+  const pill = (td, v) => { if (v == null) return; const t = document.createElement('span'); t.textContent = FMT.p(v); t.className = 'op-pill ' + (v >= 0.8 ? 'ok' : v >= 0.5 ? 'warn' : 'bad'); td.append(t); };
+  table('#tbl-boxreg', 'box_region_table', [
+    { f: 'region' },
+    { f: 'ticket_blog', num: true, cls: 'op-l', fmt: FMT.n }, { f: 'plan_tkts', num: true, fmt: FMT.n }, { f: 'plan_pct_tkt', num: true, render: pill }, { f: 'tkt_left', num: true, fmt: FMT.n },
+    { f: 'poi_blog', num: true, cls: 'op-l', fmt: FMT.n }, { f: 'plan_poi', num: true, fmt: FMT.n }, { f: 'plan_pct_poi', num: true, render: pill }, { f: 'poi_left', num: true, fmt: FMT.n },
+    { f: 'si_team', num: true, cls: 'op-l', fmt: FMT.n }, { f: 'car', num: true, fmt: FMT.n }, { f: 'labour', num: true, fmt: FMT.n },
+    { f: 'car_per_team', num: true, fmt: FMT.r }, { f: 'team_per_labour', num: true, fmt: FMT.r },
+  ], { key: (r) => r.row_id, filter: (r) => r.kind !== 'tsp', rowClass: (r) => (r.kind === 'grand' ? 'grand' : '') });
+  table('#tbl-top3', 'box_top3', [
+    { f: 'rank', render: (td, v) => { const t = document.createElement('span'); t.className = 'op-pill ' + (v === 1 ? 'bad' : 'warn'); t.textContent = v; td.append(t); } },
+    { f: 'issue' }, { f: 'where' }, { f: 'detail' }, { f: 'action' },
+  ], { key: (r) => String(r.rank) });
+}
+function drawOverview() {
+  drawBoxSummary();
+}
+
+function drawFleet() {
+  table('#tbl-rem-fleet', 'remarks', [{ f: 'topic' }, { f: 'date', fmt: FMT.d, cls: 'op-nowrap' }, { f: 'remark' }],
+    { key: (r) => r.id, filter: (r) => r.area === 'Fleet' });
+  const np = dash.data('notes_pct');
+  const NP = np.status === 'ok' ? Object.fromEntries(np.data.filter((r) => r.report_date === DAY).map((r) => [r.metric, r.pct_of_plan])) : {};
+  table('#tbl-notes', 'fleet_notes', [{ f: 'metric' }, { f: 'value', num: true, fmt: FMT.n },
+    { f: 'pct', num: true, render: (td, v, r) => { if (NP[r.metric] != null) td.textContent = FMT.p1(NP[r.metric]); } }]);
+  table('#tbl-teams', 'fleet_by_team', [
+    { f: 'priority' }, { f: 'team' }, { f: 'request', num: true, fmt: FMT.n },
+    { f: 'plan', num: true, fmt: FMT.n }, { f: 'actual', num: true, fmt: FMT.n },
+    { f: 'actual_pct', num: true, render: (td, v) => { const s = document.createElement('span'); s.textContent = FMT.p(v); s.className = 'op-pill ' + (Number(v) >= 1 ? 'ok' : 'bad'); td.append(s); } },
+  ], { key: (r) => r.team, rowClass: (r) => (Number(r.plan) > Number(r.actual) ? 'op-gap' : '') });
+  document.querySelectorAll('#tbl-teams tr.op-gap td:nth-child(4)').forEach((td) => td.classList.add('op-warn'));
+  table('#tbl-office', 'office_cars', [{ f: 'ou' }, { f: 'day', num: true, fmt: FMT.n }, { f: 'night', num: true, fmt: FMT.n }, { f: 'total', num: true, fmt: FMT.n }], { key: (r) => r.ou });
+  table('#tbl-cities', 'city_cars', [
+    { f: 'city' }, { f: 'request', num: true, fmt: FMT.n }, { f: 'actual', num: true, fmt: FMT.n },
+    { f: 'actual_pct', num: true, render: (td, v, r) => { const s = document.createElement('span'); s.textContent = FMT.p(v); s.className = 'op-pill ' + (Number(r.actual) < Number(r.request) ? 'bad' : 'ok'); td.append(s); } },
+  ], { key: (r) => r.city, rowClass: (r) => (r.city === 'All Cities' ? 'tot' : '') });
+
+  // grouped horizontal bars by priority
+  const box = document.getElementById('chart-priority');
+  const rows = chartState(box, 'fleet_by_priority');
+  document.querySelectorAll('#by-priority .op-legend span').forEach((s, i) => s.style.setProperty('--sw', dash.colors[i]));
+  if (!rows) return;
+  const keys = ['request', 'plan', 'actual'], names = ['Request', 'Plan', 'Actual'];
+  const W = box.clientWidth, groupH = 46, m = { t: 4, r: 8, b: 4 };
+  const H = rows.length * groupH + m.t + m.b;
+  box.style.minHeight = H + 'px';
+  const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('height', H);
+  m.l = measure(svg, rows.map((r) => r.priority)) + 10;
+  const endW = measure(svg, rows.map((r) => fmtN(r.plan))) + 8;
+  const x = d3.scaleLinear([0, d3.max(rows, (r) => Math.max(r.request, r.plan, r.actual))], [m.l, W - m.r - endW]);
+  const y0 = d3.scaleBand(rows.map((r) => r.priority), [m.t, H - m.b]).padding(0.18);
+  const y1 = d3.scaleBand(keys, [0, y0.bandwidth()]).padding(0.15);
+  const tt = tooltip(box);
+  const g = svg.selectAll('g.p').data(rows).join('g').attr('transform', (r) => `translate(0,${y0(r.priority)})`);
+  g.append('text').attr('x', m.l - 10).attr('y', y0.bandwidth() / 2).attr('dy', '0.35em').attr('text-anchor', 'end').text((r) => r.priority);
+  keys.forEach((k, i) => {
+    g.append('rect').attr('x', m.l).attr('y', y1(k)).attr('height', y1.bandwidth()).attr('rx', 3)
+      .attr('width', (r) => Math.max(0, x(r[k]) - m.l)).attr('fill', dash.colors[i]);
+  });
+  g.append('text').attr('class', 'v').attr('x', (r) => x(Math.max(r.request, r.plan, r.actual)) + 6).attr('y', y0.bandwidth() / 2).attr('dy', '0.35em').text((r) => fmtN(r.actual));
+  g.append('rect').attr('width', W).attr('height', y0.bandwidth()).attr('fill', 'transparent')
+    .on('mousemove', (ev, r) => tt.show(ev, r.priority, keys.map((k, i) => [dash.colors[i], names[i], fmtN(r[k])])))
+    .on('mouseleave', () => tt.hide());
+}
+
+function drawFttx() {
+  const rp = dash.data('remarks_pct');
+  PCT = rp.status === 'ok' ? Object.fromEntries(rp.data.filter((r) => r.report_date === DAY).map((r) => [r.id, r.pct_of_pending])) : {};
+  table('#tbl-remarks', 'remarks', [
+    { f: 'area', render: (td, v) => { const s = document.createElement('span'); s.className = 'op-tag'; s.textContent = v; td.append(s); td.style.setProperty('--tc', AREA_C[v] || dash.colors[5]); s.style.setProperty('--tc', AREA_C[v] || dash.colors[5]); } },
+    { f: 'topic' },
+    { f: 'date', fmt: FMT.d, cls: 'op-nowrap' },
+    { f: 'sites', num: true, fmt: FMT.n },
+    { f: 'pct', num: true, render: (td, v, r) => { const p = PCT[r.id]; if (p == null) return; const s = document.createElement('span'); s.className = 'op-pill warn'; s.textContent = FMT.p1(p); td.append(s); } },
+    { f: 'remark', cls: 'op-mm' },
+  ], {
+    key: (r) => r.id,
+    filter: (r) => r.area !== 'Fleet' && (!areaFilter || r.area === areaFilter) && (!q || Object.values(r).join(' ').toLowerCase().includes(q)),
+  });
+  const pbox = document.getElementById('chart-pending');
+  const prows = chartState(pbox, 'pending_sites');
+  if (prows) hbars(pbox, prows.map((r) => ({ label: r.reason, value: Number(r.sites), raw: r })), {
+    color: (r, i) => dash.colors[(i + 3) % dash.colors.length], end: (r) => `${fmtN(r.value)} · ${FMT.p1(r.value / d3.sum(prows, (x) => Number(x.sites)))}`,
+    tipLines: (r) => [[null, `${r.raw.case} sites`, fmtN(r.value)], [null, 'Share of pending', FMT.p1(r.value / d3.sum(prows, (x) => Number(x.sites)))]],
+  });
+  table('#tbl-blog', 'fttx_blog', [
+    { f: 'region' }, { f: 'team', num: true, fmt: FMT.n }, { f: 'car', num: true, fmt: FMT.n },
+    { f: 'broken_highloss', num: true, fmt: FMT.n }, { f: 'migration', num: true, fmt: FMT.n },
+    { f: 'pending', num: true, render: (td, v) => { const s = document.createElement('span'); s.textContent = fmtN(v); s.className = 'op-pill ' + (Number(v) > 0 ? 'warn' : 'ok'); td.append(s); } },
+  ], { key: (r) => r.region });
+  table('#tbl-cable', 'cable_works', [
+    { f: 'stage' }, { f: 'region' }, { f: 'tsp' }, { f: 'work_type' }, { f: 'street', cls: 'op-mm' },
+    { f: 'hc', num: true, cls: 'op-sec', fmt: FMT.n }, { f: 'labour', num: true, cls: 'op-sec', fmt: FMT.n },
+    { f: 'impact_olt', num: true, fmt: FMT.n }, { f: 'impact_ca1', num: true, fmt: FMT.n }, { f: 'impact_ca2_otb', num: true, fmt: FMT.n },
+  ], { key: (r) => r.job, filter: (r) => !cableStage || r.stage === cableStage });
+}
+
+function drawBox() {
+  const lv = { High: 'bad', Watch: 'warn', Info: 'ok' };
+  table('#tbl-att', 'box_attention', [
+    { f: 'level', render: (td, v) => { const s = document.createElement('span'); s.className = 'op-pill ' + (lv[v] || ''); s.textContent = v; td.append(s); } },
+    { f: 'region' }, { f: 'tsp' }, { f: 'issue' }, { f: 'detail' },
+  ], { key: (r) => r.id });
+  const pill = (td, v) => {
+    if (v == null) return;
+    const w = document.createElement('span'); w.className = 'op-bar';
+    const t = document.createElement('span'); t.textContent = FMT.p(v);
+    t.className = 'op-pill ' + (v >= 0.8 ? 'ok' : v >= 0.5 ? 'warn' : 'bad');
+    const i = document.createElement('i'), b = document.createElement('s');
+    b.style.width = Math.min(100, v * 100) + '%';
+    b.style.background = v >= 0.8 ? 'var(--color-ok)' : v >= 0.5 ? 'var(--color-warn)' : 'var(--color-bad)';
+    i.append(b); w.append(t, i); td.append(w);
+  };
+  let prev = null;
+  table('#tbl-pv', 'box_region_table', [
+    { f: 'region', render: (td, v, r) => { td.textContent = r.kind === 'tsp' && v === prev ? '' : v; prev = v; } },
+    { f: 'tsp' },
+    { f: 'ticket_blog', num: true, cls: 'op-l', fmt: FMT.n }, { f: 'plan_tkts', num: true, fmt: FMT.n },
+    { f: 'plan_pct_tkt', num: true, render: pill },
+    { f: 'poi_blog', num: true, cls: 'op-l', fmt: FMT.n }, { f: 'plan_poi', num: true, fmt: FMT.n },
+    { f: 'plan_pct_poi', num: true, render: pill },
+    { f: 'si_team', num: true, cls: 'op-sec op-l', fmt: FMT.n }, { f: 'car', num: true, cls: 'op-sec', fmt: FMT.n },
+    { f: 'labour', num: true, cls: 'op-sec', fmt: FMT.n }, { f: 'car_per_team', num: true, cls: 'op-sec', fmt: FMT.r },
+    { f: 'team_per_labour', num: true, cls: 'op-sec', fmt: FMT.r },
+  ], {
+    key: (r) => r.row_id,
+    rowClass: (r) => (r.kind === 'tsp' ? '' : r.kind),
+  });
+  let last = null;
+  const pvRows = (dash.data('box_region_table').data || []).filter((r) => r.report_date === DAY);
+  document.querySelectorAll('#tbl-pv tbody tr').forEach((tr, i) => {
+    const reg = pvRows[i] && pvRows[i].region;
+    if (reg !== last && !tr.classList.contains('grand')) tr.classList.add('first');
+    last = reg;
+  });
+}
+
+let DAY = null;
+function reportDays() {
+  const r = dash.data('report_info');
+  return r.status === 'ok' ? [...new Set(r.data.map((x) => x.report_date))].filter(Boolean).sort().reverse() : [];
+}
+function drawDays() {
+  const ds = reportDays(), p = dash.params().day;
+  DAY = ds.includes(p) ? p : ds[0] || null;
+  const bar = document.getElementById('op-days');
+  bar.replaceChildren();
+  const lab = document.createElement('span'); lab.className = 'op-dlab'; lab.textContent = 'Report day:'; bar.append(lab);
+  ds.forEach((d, i) => {
+    const b = document.createElement('button'); b.className = 'op-chip op-day';
+    b.textContent = d3.utcFormat('%a %-d %b')(new Date(d)) + (i === 0 ? ' · latest' : '');
+    b.setAttribute('aria-pressed', String(d === DAY));
+    b.addEventListener('click', () => dash.setParams({ day: i === 0 ? null : d }));
+    bar.append(b);
+  });
+  const note = document.getElementById('op-pastnote');
+  note.hidden = !(DAY && ds[0] && DAY !== ds[0]);
+}
+window.opReportDays = reportDays;
+let cur = 'overview';
+const pages = { overview: drawOverview, fleet: drawFleet, fttx: drawFttx, boxops: drawBox };
+let AREA_C = {};
+function paint() {
+  const root = document.querySelector('.op'), c = dash.colors;
+  c.forEach((col, i) => root.style.setProperty('--c' + i, col));
+  const pc = { overview: c[0], fleet: c[1], fttx: c[2], boxops: c[3] };
+  document.querySelectorAll('.op-page').forEach((p) => p.style.setProperty('--pc', pc[p.id]));
+  document.querySelectorAll('.op-tab').forEach((t) => t.style.setProperty('--pc', pc[t.dataset.page]));
+  document.querySelectorAll('.op-tile').forEach((t, i) => t.style.setProperty('--acc', c[i % c.length]));
+  AREA_C = { Fleet: c[1], FTTx: c[2], 'FTTx pending': c[4] };
+}
+function draw() { drawDays(); paint(); fillMarks(); pages[cur](); }
+
+const tabs = [...document.querySelectorAll('.op-tab')];
+function show(id) {
+  cur = id;
+  tabs.forEach((t) => t.setAttribute('aria-selected', String(t.dataset.page === id)));
+  document.querySelectorAll('.op-page').forEach((p) => { p.hidden = p.id !== id; });
+  draw();
+}
+tabs.forEach((t) => t.addEventListener('click', () => { show(t.dataset.page); dash.setLink(t.dataset.page); }));
+
+document.querySelectorAll('.op-goto').forEach((b) => b.addEventListener('click', () => { show(b.dataset.page); dash.setLink(b.dataset.page); }));
+document.querySelector('.op-rsearch').addEventListener('input', (e) => { q = e.target.value.trim().toLowerCase(); drawFttx(); });
+document.querySelectorAll('#remarks .op-chip').forEach((b) => b.addEventListener('click', () => {
+  areaFilter = b.dataset.area;
+  document.querySelectorAll('#remarks .op-chip').forEach((c) => c.setAttribute('aria-pressed', String(c === b)));
+  drawFttx();
+}));
+document.querySelectorAll('.op-cchip').forEach((b) => b.addEventListener('click', () => {
+  cableStage = b.dataset.stage;
+  document.querySelectorAll('.op-cchip').forEach((c) => c.setAttribute('aria-pressed', String(c === b)));
+  drawFttx();
+}));
+
+
+dash.onData(draw);
+const start = location.hash.slice(1);
+if (pages[start]) show(start);
+else { const el = document.getElementById(start); if (el) el.scrollIntoView(); }
 </script>
+
+<script>
+// Excel template reader for the daily upload (no libraries: zip + XML by hand).
+window.OPX = (function () {
+  const SPEC = {"info": [["Report date", "report_date", "d"], ["Fleet time", "fleet_time", "t"], ["City time", "city_time", "t"], ["FTTx time", "fttx_time", "t"], ["Box-Ops time", "box_time", "t"]], "sheets": [{"sheet": "Fleet by team", "id": "fleet_by_team", "cols": [["Priority", "priority", "L:P1~3,P4~5,P6,P7,P8,P9-Non Priority"], ["Team", "team", "t"], ["Request", "request", "n"], ["Plan", "plan", "n"], ["Actual", "actual", "n"], ["Actual %", "actual_pct", "a:=IF(C{r}>0,E{r}/C{r},\"\")"]]}, {"sheet": "Office cars", "id": "office_cars", "cols": [["OU", "ou", "t"], ["Day", "day", "n"], ["Night", "night", "n"], ["Total", "total", "a:=IF(A{r}=\"\",\"\",B{r}+C{r})"]]}, {"sheet": "City cars", "id": "city_cars", "cols": [["City", "city", "t"], ["Request", "request", "n"], ["Actual", "actual", "n"], ["Actual %", "actual_pct", "a:=IF(B{r}>0,C{r}/B{r},\"\")"]]}, {"sheet": "Fleet notes", "id": "fleet_notes", "cols": [["Item", "metric", "t"], ["Cars", "value", "n"]]}, {"sheet": "FTTx blog", "id": "fttx_blog", "cols": [["Region", "region", "t"], ["Team", "team", "n"], ["Car", "car", "n"], ["Broken / high-loss", "broken_highloss", "n"], ["Migration / activities", "migration", "n"], ["Remain / pending", "pending", "n"]]}, {"sheet": "Cable works", "id": "cable_works", "cols": [["Stage", "stage", "l:Done,Plan"], ["Date", "date", "d"], ["Region", "region", "t"], ["Township", "tsp", "t"], ["Type", "work_type", "L:Cable Cutting,Cable Cleaning"], ["Street and road", "street", "t"], ["HC", "hc", "n"], ["Labour", "labour", "n"], ["Impact OLT", "impact_olt", "n"], ["Impact CA1", "impact_ca1", "n"], ["Impact CA2/OTB", "impact_ca2_otb", "n"]]}, {"sheet": "Pending sites", "id": "pending_sites", "cols": [["Reason", "reason", "t"], ["Case", "case", "t"], ["Sites", "sites", "n"]]}, {"sheet": "Box-Ops", "id": "box_ops", "cols": [["Region", "region", "t"], ["Township", "tsp", "t"], ["Ticket blog", "ticket_blog", "n"], ["Plan tkts", "plan_tkts", "n"], ["POI blog", "poi_blog", "n"], ["Plan POI", "plan_poi", "n"], ["SI team", "si_team", "n"], ["Car", "car", "n"], ["Labour", "labour", "n"], ["Plan % tkt", "plan_pct_tkt", "a:=IF(C{r}>0,D{r}/C{r},\"\")"], ["Plan % POI", "plan_pct_poi", "a:=IF(E{r}>0,F{r}/E{r},\"\")"], ["Car/Team", "car_per_team", "a:=IF(H{r}>0,ROUND(G{r}/H{r},1),\"\")"], ["Team/Labour", "team_per_labour", "a:=IF(G{r}>0,ROUND(I{r}/G{r},1),\"\")"]]}, {"sheet": "Remarks", "id": "remarks", "cols": [["Area", "area", "l:Fleet,FTTx,FTTx pending"], ["Topic", "topic", "t"], ["Date", "date", "d"], ["Sites", "sites", "n"], ["Remark", "remark", "t"]]}]};
+  async function inflate(u8) {
+    const s = new Blob([u8]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    return new Uint8Array(await new Response(s).arrayBuffer());
+  }
+  function unzip(buf) {
+    const u = new Uint8Array(buf), dv = new DataView(buf), td = new TextDecoder();
+    let e = u.length - 22;
+    while (e >= 0 && dv.getUint32(e, true) !== 0x06054b50) e--;
+    if (e < 0) throw new Error('This is not an .xlsx file. Save the workbook as Excel Workbook (.xlsx) and try again.');
+    const n = dv.getUint16(e + 10, true); let p = dv.getUint32(e + 16, true);
+    const files = {};
+    for (let i = 0; i < n; i++) {
+      const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true);
+      const nl = dv.getUint16(p + 28, true), xl = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true), off = dv.getUint32(p + 42, true);
+      files[td.decode(u.subarray(p + 46, p + 46 + nl))] = { method, csize, off };
+      p += 46 + nl + xl + cl;
+    }
+    return async (name) => {
+      const f = files[name]; if (!f) return null;
+      const start = f.off + 30 + dv.getUint16(f.off + 26, true) + dv.getUint16(f.off + 28, true);
+      const raw = u.subarray(start, start + f.csize);
+      return td.decode(f.method === 0 ? raw : await inflate(raw));
+    };
+  }
+  const unesc = (s) => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16))).replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(+d)).replace(/&amp;/g, '&');
+  const attrs = (s) => { const o = {}; s.replace(/([\w:]+)="([^"]*)"/g, (_, k, v) => { o[k] = unesc(v); }); return o; };
+  const texts = (x) => { let s = ''; x.replace(/<rPh[\s\S]*?<\/rPh>/g, '').replace(/<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/g, (_, t) => { s += unesc(t); }); return s; };
+  const colIdx = (ref) => { let n = 0; for (const ch of ref.replace(/\d+/g, '')) n = n * 26 + ch.charCodeAt(0) - 64; return n - 1; };
+  function parseSheet(xml, shared) {
+    const rows = {};
+    (xml.match(/<c\b[^>]*?(?:\/>|>[\s\S]*?<\/c>)/g) || []).forEach((cx) => {
+      const head = cx.match(/^<c\b([^>]*?)\/?>/)[1], a = attrs(head);
+      if (!a.r) return;
+      const v = (cx.match(/<v>([\s\S]*?)<\/v>/) || [])[1];
+      let val = null;
+      if (a.t === 's') val = v != null ? shared[+v] : null;
+      else if (a.t === 'inlineStr') val = texts(cx);
+      else if (a.t === 'str') val = v != null ? unesc(v) : null;
+      else if (a.t === 'b') val = v === '1';
+      else if (a.t === 'e') val = null;
+      else if (v != null) val = Number(v);
+      const r = +a.r.replace(/[A-Z]+/g, '');
+      (rows[r] = rows[r] || [])[colIdx(a.r)] = val;
+    });
+    return rows;
+  }
+  async function readBook(buf) {
+    const get = unzip(buf);
+    const wbx = await get('xl/workbook.xml');
+    if (!wbx) throw new Error('This file has no workbook inside. Save it as Excel Workbook (.xlsx).');
+    const rels = {}; ((await get('xl/_rels/workbook.xml.rels')) || '').replace(/<Relationship\b([^>]*)\/?>/g, (_, s) => { const a = attrs(s); rels[a.Id] = a.Target; });
+    const ssx = await get('xl/sharedStrings.xml');
+    const shared = ssx ? (ssx.match(/<si>[\s\S]*?<\/si>|<si\/>/g) || []).map(texts) : [];
+    const sheets = {};
+    for (const m of wbx.match(/<sheet\b[^>]*\/?>/g) || []) {
+      const a = attrs(m); let t = rels[a['r:id']]; if (!t) continue;
+      t = t.startsWith('/') ? t.slice(1) : 'xl/' + t;
+      const x = await get(t); if (x) sheets[a.name.trim()] = parseSheet(x, shared);
+    }
+    return sheets;
+  }
+  const iso = (d) => d.toISOString().slice(0, 10);
+  const MON = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+  function toDate(v) {
+    if (v == null || v === '') return null;
+    if (typeof v === 'number') return iso(new Date(Date.UTC(1899, 11, 30) + Math.round(v) * 864e5));
+    const s = String(v).trim();
+    let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); if (m) return iso(new Date(Date.UTC(+m[1], m[2] - 1, +m[3])));
+    m = s.match(/^(\d{1,2})[-\s/]([A-Za-z]{3})[A-Za-z]*[-\s/,]+(\d{4})$/); if (m && MON[m[2].toLowerCase()] != null) return iso(new Date(Date.UTC(+m[3], MON[m[2].toLowerCase()], +m[1])));
+    m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); if (m) return iso(new Date(Date.UTC(+m[3], m[2] - 1, +m[1])));
+    return undefined;
+  }
+  const txt = (v) => (v == null ? '' : typeof v === 'number' ? String(v) : String(v).trim());
+  function excelTime(v) { if (typeof v !== 'number') return txt(v); const mins = Math.round((v % 1) * 1440); let h = Math.floor(mins / 60); const mm = String(mins % 60).padStart(2, '0'); const ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12; return h + ':' + mm + ' ' + ap; }
+
+  async function parse(buf) {
+    const book = await readBook(buf);
+    const errors = [], warnings = [], datasets = {}, counts = [];
+    const find = (name) => { const k = Object.keys(book).find((s) => s.toLowerCase() === name.toLowerCase()); return k ? book[k] : null; };
+    // Report info
+    const ri = find('Report info'); const info = {};
+    if (!ri) errors.push('Sheet “Report info” is missing.');
+    else {
+      Object.values(ri).forEach((row) => {
+        const lab = txt(row[0]).toLowerCase(); const it = SPEC.info.find((x) => x[0].toLowerCase() === lab);
+        if (it) info[it[1]] = it[2] === 'd' ? toDate(row[1]) : excelTime(row[1]);
+      });
+      if (!info.report_date) errors.push('Report info: “Report date” is empty or not a date.');
+    }
+    SPEC.sheets.forEach(({ sheet, id, cols }) => {
+      const sh = find(sheet);
+      if (!sh) { errors.push('Sheet “' + sheet + '” is missing.'); return; }
+      const rn = Object.keys(sh).map(Number).sort((a, b) => a - b);
+      const hr = rn.find((r) => (sh[r] || []).some((c) => txt(c).toLowerCase() === cols[0][0].toLowerCase()));
+      if (hr == null) { errors.push(sheet + ': header row not found (row 3 must start with “' + cols[0][0] + '”).'); return; }
+      const pos = {};
+      (sh[hr] || []).forEach((c, i) => { const h = txt(c).toLowerCase(); const col = cols.find((x) => x[0].toLowerCase() === h); if (col) pos[col[1]] = i; });
+      const missing = cols.filter((c) => !c[2].startsWith('a:') && pos[c[1]] == null).map((c) => c[0]);
+      if (missing.length) { errors.push(sheet + ': column(s) missing: ' + missing.join(', ') + '.'); return; }
+      const out = [];
+      rn.filter((r) => r > hr).forEach((r) => {
+        const row = sh[r] || []; const rec = {}; let any = false;
+        cols.forEach(([h, f, k]) => {
+          if (k.startsWith('a:')) return;
+          const v = row[pos[f]];
+          if (v != null && txt(v) !== '') any = true;
+          if (k === 'n') {
+            if (v == null || txt(v) === '') rec[f] = null;
+            else { const n = Number(txt(v).replace(/,/g, '')); if (Number.isNaN(n)) errors.push(sheet + ' row ' + r + ': “' + h + '” must be a number (found “' + txt(v) + '”).'); rec[f] = n; }
+          } else if (k === 'd') {
+            const d = toDate(v); if (d === undefined) { errors.push(sheet + ' row ' + r + ': “' + h + '” is not a date (found “' + txt(v) + '”).'); rec[f] = null; } else rec[f] = d;
+          } else rec[f] = txt(v);
+        });
+        if (!any) return;
+        const first = txt(row[pos[cols[0][1]]]).toLowerCase();
+        if (/^(total|grand total|all cities|r1s? total)/.test(first) || /total$/.test(first)) { warnings.push(sheet + ' row ' + r + ': total row skipped – the portal adds totals itself.'); return; }
+        cols.forEach(([h, f, k]) => {
+          if (k.startsWith('l:') && rec[f] !== '' && !k.slice(2).split(',').includes(rec[f])) errors.push(sheet + ' row ' + r + ': “' + h + '” must be one of ' + k.slice(2).split(',').join(' / ') + ' (found “' + rec[f] + '”).');
+        });
+        if (!rec[cols[0][1]]) errors.push(sheet + ' row ' + r + ': “' + cols[0][0] + '” is empty.');
+        out.push({ rec, r });
+      });
+      counts.push([sheet, out.length]);
+      if (!out.length) warnings.push(sheet + ': no rows filled.');
+      datasets[id] = out;
+    });
+    if (errors.length) return { info, errors, warnings, counts, datasets: null };
+    const N = (v) => (v == null ? 0 : v);
+    const pct = (a, b) => (b ? a / b : null);
+    const r1 = (v) => (v == null ? null : Math.round(v * 10) / 10);
+    const dup = (rows, keyf, sheet, label) => { const seen = new Set(); rows.forEach(({ rec, r }) => { const k = keyf(rec); if (seen.has(k)) errors.push(sheet + ' row ' + r + ': ' + label + ' “' + k + '” appears twice.'); seen.add(k); }); };
+    const D = datasets, R = {};
+    dup(D.fleet_by_team, (x) => x.team, 'Fleet by team', 'Team');
+    let pr = '';
+    R.fleet_by_team = D.fleet_by_team.map(({ rec: x }) => { pr = x.priority || pr; return { priority: pr, team: x.team, request: N(x.request), plan: N(x.plan), actual: N(x.actual), actual_pct: pct(N(x.actual), N(x.request)) }; });
+    dup(D.office_cars, (x) => x.ou, 'Office cars', 'OU');
+    R.office_cars = D.office_cars.map(({ rec: x }) => ({ ou: x.ou, day: N(x.day), night: N(x.night), total: N(x.day) + N(x.night) }));
+    dup(D.city_cars, (x) => x.city, 'City cars', 'City');
+    R.city_cars = D.city_cars.map(({ rec: x }) => ({ city: x.city, request: N(x.request), actual: N(x.actual), actual_pct: pct(N(x.actual), N(x.request)) }));
+    const cr = R.city_cars.reduce((a, x) => a + x.request, 0), ca = R.city_cars.reduce((a, x) => a + x.actual, 0);
+    R.city_cars.push({ city: 'All Cities', request: cr, actual: ca, actual_pct: pct(ca, cr) });
+    dup(D.fleet_notes, (x) => x.metric, 'Fleet notes', 'Item');
+    R.fleet_notes = D.fleet_notes.map(({ rec: x }) => ({ metric: x.metric, value: N(x.value) }));
+    if (!R.fleet_notes.some((x) => x.metric === 'Driver leave / site cancel')) warnings.push('Fleet notes: item “Driver leave / site cancel” not found – keep the item names as in the template.');
+    dup(D.fttx_blog, (x) => x.region, 'FTTx blog', 'Region');
+    R.fttx_blog = D.fttx_blog.map(({ rec: x }) => ({ region: x.region, team: N(x.team), car: N(x.car), broken_highloss: N(x.broken_highloss), migration: N(x.migration), pending: N(x.pending) }));
+    const cnt = { Done: 0, Plan: 0 };
+    R.cable_works = D.cable_works.map(({ rec: x }) => ({ job: (x.stage === 'Done' ? 'D' : 'P') + (++cnt[x.stage]), stage: x.stage, date: x.date || (x.stage === 'Done' ? info.prev_date : info.report_date) || null,
+      region: x.region, tsp: x.tsp, work_type: x.work_type, street: x.street, hc: N(x.hc), labour: N(x.labour), impact_olt: N(x.impact_olt), impact_ca1: N(x.impact_ca1), impact_ca2_otb: N(x.impact_ca2_otb) }));
+    R.pending_sites = D.pending_sites.map(({ rec: x }) => ({ reason: x.reason, case: x.case, sites: N(x.sites) }));
+    dup(D.pending_sites, (x) => x.reason, 'Pending sites', 'Reason');
+    dup(D.box_ops, (x) => x.region + ' / ' + x.tsp, 'Box-Ops', 'Region / township');
+    R.box_ops = D.box_ops.map(({ rec: x }) => ({ region: x.region, tsp: x.tsp, ticket_blog: N(x.ticket_blog), plan_tkts: N(x.plan_tkts), plan_pct_tkt: pct(N(x.plan_tkts), N(x.ticket_blog)),
+      poi_blog: N(x.poi_blog), plan_poi: N(x.plan_poi), plan_pct_poi: pct(N(x.plan_poi), N(x.poi_blog)), si_team: N(x.si_team), car: N(x.car), labour: N(x.labour),
+      car_per_team: r1(pct(N(x.si_team), N(x.car))), team_per_labour: r1(pct(N(x.labour), N(x.si_team))), is_total: false }));
+    R.remarks = D.remarks.map(({ rec: x }, i) => ({ id: 'R' + String(i + 1).padStart(2, '0'), area: x.area, topic: x.topic, date: x.date, sites: x.sites, remark: x.remark }));
+    if (info.report_date) { const d = new Date(info.report_date + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() - 1); info.prev_date = iso(d); }
+    R.report_info = [{ report_date: info.report_date, prev_date: info.prev_date, fleet_time: info.fleet_time || '', city_time: info.city_time || '', fttx_time: info.fttx_time || '', box_time: info.box_time || '' }];
+    R.cable_works.forEach((x) => { if (!x.date) x.date = x.stage === 'Done' ? info.prev_date : info.report_date; });
+    return { info, errors, warnings, counts, datasets: errors.length ? null : R };
+  }
+  return { parse };
+})();
+
+</script>
+<script>
+/* ---------- upload links, last-upload status and "Check Excel" ---------- */
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const fmtDay = (d) => d3.utcFormat('%-d %b %Y')(new Date(d));
+  // repository: from settings, else from the GitHub Pages address
+  let repo = (window.PORTAL_CONFIG.githubRepo || '').trim();
+  if (!repo && /\.github\.io$/.test(location.hostname)) {
+    const owner = location.hostname.split('.')[0], first = location.pathname.split('/').filter(Boolean)[0];
+    repo = owner + '/' + (first || owner + '.github.io');
+  }
+  const uploadUrl = repo ? 'https://github.com/' + repo + '/upload/' + (window.PORTAL_CONFIG.branch || 'main') + '/uploads' : null;
+  if (uploadUrl) { $('op-upload-link').href = uploadUrl; $('op-upload-link').hidden = false; }
+
+  // last upload result
+  fetch('data/last_upload.json?v=' + Date.now(), { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).then((s) => {
+    if (!s) return;
+    const box = $('op-lastup'); box.hidden = false;
+    const when = new Date(s.at).toLocaleString();
+    if (s.status === 'ok') {
+      box.textContent = 'Last upload: ' + s.file + ' → ' + fmtDay(s.report_date) + (s.replaced ? ' (replaced)' : '') + ' · ' + when
+        + (s.removed && s.removed.length ? ' · removed old day(s): ' + s.removed.map(fmtDay).join(', ') : '');
+    } else {
+      box.className = 'op-lastup err';
+      box.append(el('b', '', 'Last upload failed: ' + s.file + ' (' + when + '). Nothing was changed. Fix the Excel and upload it again:'));
+      const ul = el('ul'); (s.errors || []).forEach((e) => ul.append(el('li', '', e))); box.append(ul);
+    }
+  }).catch(() => {});
+
+  // Check an Excel file in the browser before uploading it
+  const panel = $('op-upanel'), fileIn = $('op-file');
+  const close = () => { panel.hidden = true; panel.replaceChildren(); fileIn.value = ''; };
+  $('op-check-btn').addEventListener('click', () => fileIn.click());
+  fileIn.addEventListener('change', async () => {
+    const f = fileIn.files && fileIn.files[0]; if (!f) return;
+    panel.hidden = false; panel.replaceChildren(el('h3', '', 'Checking ' + f.name + '…'));
+    let res;
+    try { res = await window.OPX.parse(await f.arrayBuffer()); }
+    catch (e) { res = { errors: [(e && e.message) || 'Could not read the file.'], warnings: [], counts: [], info: {} }; }
+    panel.replaceChildren(el('h3', '', 'Check · ' + f.name));
+    if (res.info && res.info.report_date) panel.append(el('div', '', 'Report date: ' + fmtDay(res.info.report_date)));
+    const cnt = el('div', 'op-upcounts'); (res.counts || []).forEach(([sh, n]) => cnt.append(el('span', '', sh + ': ' + n + ' rows'))); panel.append(cnt);
+    if (res.info && res.info.report_date && !res.errors.length) {
+      const days = window.opReportDays ? window.opReportDays() : [];
+      const all = [...new Set([...days, res.info.report_date])].sort().reverse();
+      if (!all.slice(0, 7).includes(res.info.report_date)) res.errors.push('Report date is older than the 7 days the portal keeps, so it would be removed straight away. Check the date on the Report info sheet.');
+      else panel.append(el('div', 'op-note', (days.includes(res.info.report_date) ? 'Uploading it will replace the figures saved for this day. ' : 'Uploading it adds this day. ')
+        + (all.length > 7 ? 'The oldest day (' + all.slice(7).map(fmtDay).join(', ') + ') will be removed.' : 'The portal keeps the last 7 days.')));
+    }
+    if (res.errors.length) { panel.append(el('b', '', 'Fix these in the Excel before uploading:')); const ul = el('ul', 'err'); res.errors.slice(0, 40).forEach((e) => ul.append(el('li', '', e))); panel.append(ul); }
+    if (res.warnings && res.warnings.length) { panel.append(el('b', '', 'Notes:')); const ul = el('ul', 'wrn'); res.warnings.forEach((e) => ul.append(el('li', '', e))); panel.append(ul); }
+    const act = el('div', 'op-upact');
+    if (!res.errors.length) {
+      panel.append(el('div', 'ok', 'File looks good.'));
+      if (uploadUrl) { const a = el('a', 'op-btn op-btn-pri', '⬆ Upload it to GitHub'); a.href = uploadUrl; a.target = '_blank'; a.rel = 'noopener'; act.append(a); }
+    }
+    const c = el('button', 'op-btn', 'Close'); c.addEventListener('click', close); act.append(c); panel.append(act);
+  });
+})();
+</script>
+</div>
+<!-- Back to Impl-Ops -->
+<a href="https://mgprotocol-code.github.io/yzo-portals/" id="yzoBack" aria-label="Back to Impl-Ops main page">← Impl-Ops</a>
+<style>
+#yzoBack{position:fixed;left:14px;bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:9999;
+  display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:999px;
+  background:#16304A;color:#fff;font:600 14px/1 'Barlow',system-ui,'Segoe UI',sans-serif;
+  text-decoration:none;box-shadow:0 4px 14px rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.15)}
+#yzoBack:hover{background:#0D7C87}
+#yzoBack:focus-visible{outline:3px solid #3FB6C1;outline-offset:2px}
+@media print{#yzoBack{display:none}}
+</style>
 </body>
 </html>
