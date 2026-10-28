@@ -1,4 +1,5 @@
 """Convert daily Excel uploads (uploads/*.xlsx) into portal data files.
+Also deletes report days on request (uploads/delete-YYYY-MM-DD.txt).
 
 Keeps the newest 7 report days in data/, deletes older ones, and records the
 result of the last upload in data/last_upload.json (shown on the portal).
@@ -178,12 +179,27 @@ def parse(path):
 def main():
     os.makedirs(DATA, exist_ok=True)
     files = [f for f in sorted(glob.glob(os.path.join(UPLOADS, '*.xlsx')), key=os.path.getmtime) if not os.path.basename(f).startswith('~$')]
-    if not files:
+    # delete requests: uploads/delete-YYYY-MM-DD.txt (made by the portal's "Delete this day" button)
+    dels = [f for f in sorted(glob.glob(os.path.join(UPLOADS, '*.txt'))) if os.path.basename(f).lower().startswith('delete')]
+    if not files and not dels:
         print('No new uploads.'); return
     now = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')
     days_path = os.path.join(DATA, 'days.json')
     days = json.load(open(days_path)) if os.path.exists(days_path) else []
     status = None
+    for f in dels:
+        name = os.path.basename(f)
+        try: body = open(f, encoding='utf-8', errors='ignore').read()
+        except Exception: body = ''
+        wanted = sorted(set(re.findall(r'\d{4}-\d{2}-\d{2}', name + ' ' + body)))
+        gone = [d for d in wanted if d in days]
+        for d in gone:
+            p = os.path.join(DATA, d + '.json')
+            if os.path.exists(p): os.remove(p)
+        days = [d for d in days if d not in gone]
+        os.remove(f)
+        status = dict(status='deleted', file=name, at=now, deleted=gone, not_found=[d for d in wanted if d not in gone])
+        print('DELETE', name, '->', gone or 'nothing', '| not found:', status['not_found'] or 'none')
     for f in files:
         name = os.path.basename(f)
         try:

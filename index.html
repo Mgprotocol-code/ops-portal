@@ -214,6 +214,7 @@ window.dash = (function () {
       <div class="op-upbtns">
         <a class="op-btn op-btn-pri" id="op-upload-link" href="#" target="_blank" rel="noopener" hidden>⬆ Upload daily Excel</a>
         <button class="op-btn" id="op-check-btn">✓ Check Excel</button>
+        <button class="op-btn" id="op-del-btn" type="button" hidden>🗑 Delete this day</button>
         <a class="op-btn" href="template/Operation_Daily_Report_Template.xlsx" download>⬇ Excel template</a>
         <input type="file" id="op-file" accept=".xlsx" hidden>
       </div>
@@ -1210,7 +1211,10 @@ window.OPX = (function () {
     if (!s) return;
     const box = $('op-lastup'); box.hidden = false;
     const when = new Date(s.at).toLocaleString();
-    if (s.status === 'ok') {
+    if (s.status === 'deleted') {
+      box.textContent = 'Last change: deleted report day ' + ((s.deleted || []).map(fmtDay).join(', ') || '—') + ' · ' + when
+        + (s.not_found && s.not_found.length ? ' · not found: ' + s.not_found.map(fmtDay).join(', ') : '');
+    } else if (s.status === 'ok') {
       box.textContent = 'Last upload: ' + s.file + ' → ' + fmtDay(s.report_date) + (s.replaced ? ' (replaced)' : '') + ' · ' + when
         + (s.removed && s.removed.length ? ' · removed old day(s): ' + s.removed.map(fmtDay).join(', ') : '');
     } else {
@@ -1219,6 +1223,20 @@ window.OPX = (function () {
       const ul = el('ul'); (s.errors || []).forEach((e) => ul.append(el('li', '', e))); box.append(ul);
     }
   }).catch(() => {});
+
+  // Delete the selected report day: opens GitHub with a ready-made delete request file
+  const delBtn = $('op-del-btn');
+  if (repo) {
+    delBtn.hidden = false;
+    delBtn.addEventListener('click', () => {
+      const day = typeof DAY !== 'undefined' ? DAY : null;
+      if (!day) { alert('There is no report day to delete.'); return; }
+      if (!confirm('Delete the report day ' + fmtDay(day) + '?\n\nGitHub opens with a small delete request. Click “Commit changes” there; the day disappears from the portal in 1–2 minutes. Only team members with upload access can do this.')) return;
+      const url = 'https://github.com/' + repo + '/new/' + (window.PORTAL_CONFIG.branch || 'main') + '/uploads?filename='
+        + encodeURIComponent('delete-' + day + '.txt') + '&value=' + encodeURIComponent('Delete report day ' + day + '\n');
+      window.open(url, '_blank', 'noopener');
+    });
+  }
 
   // Check an Excel file in the browser before uploading it
   const panel = $('op-upanel'), fileIn = $('op-file');
