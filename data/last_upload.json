@@ -1,14 +1,13 @@
 {
  "status": "ok",
- "file": "Operation_Daily_Report (27-Oct-2026).xlsx",
- "at": "2026-10-27T04:13:24+00:00",
- "report_date": "2026-10-27",
+ "file": "Operation_Daily_Report (28-Oct-2026).xlsx",
+ "at": "2026-10-28T04:26:15+00:00",
+ "report_date": "2026-10-28",
  "replaced": false,
  "removed": [
-  "2026-10-20"
+  "2026-10-21"
  ],
  "warnings": [
-  "Cable works: no rows filled.",
   "Fleet notes: item “Driver leave / site cancel” not found – keep the item names as in the template."
  ]
 }
