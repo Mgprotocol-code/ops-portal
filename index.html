@@ -6,6 +6,7 @@
 <title>Operation Daily Planning</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚐</text></svg>">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <style>
 /* ---- theme tokens (light / dark) ---- */
 :root{
@@ -45,6 +46,16 @@ a.op-btn{text-decoration:none;display:inline-block}
 // GitHub repository that hosts this portal, e.g. "my-company/ops-portal".
 // Leave empty when the site runs on GitHub Pages (https://<owner>.github.io/<repo>/): it is detected automatically.
 window.PORTAL_CONFIG = { githubRepo: 'Mgprotocol-code/ops-portal', branch: 'main' };
+// Shared database (Supabase): uploads and deletes happen right here in the portal.
+window.OPS_CFG = {
+  url: 'https://uemxuinndpaazwxayecv.supabase.co',
+  key: 'sb_publishable_OLHjd18Q8zjcOgr-wPMjWA_w0f0huZf',
+  uploadEmails: ['fttxreport@gmail.com', 'mgprotocol+fttx@gmail.com', 'mgprotocol@gmail.com'],
+  keepDays: 7,
+};
+window.OPS_DB = (window.supabase && window.supabase.createClient)
+  ? window.supabase.createClient(OPS_CFG.url, OPS_CFG.key, { auth: { storageKey: 'ops-upload-auth' } }) : null;
+window.OPS_SOURCE = null; window.OPS_FILES = [];
 
 /* ---------- data layer: loads data/*.json and serves it to the page ---------- */
 window.dash = (function () {
@@ -70,8 +81,19 @@ window.dash = (function () {
   }
   async function load() {
     try {
-      const days = await getJSON('data/days.json');
-      const files = await Promise.all(days.map((d) => getJSON('data/' + d + '.json').catch(() => null)));
+      let files = null;
+      if (window.OPS_DB) {
+        const { data, error } = await window.OPS_DB.from('ops_days').select('report_date,uploaded_at,file,datasets')
+          .order('report_date', { ascending: false }).limit(window.OPS_CFG.keepDays);
+        if (error) console.warn('ops_days', error.message);
+        if (!error && data && data.length) { files = data; window.OPS_SOURCE = 'cloud'; }
+      }
+      if (!files) {
+        const days = await getJSON('data/days.json');
+        files = (await Promise.all(days.map((d) => getJSON('data/' + d + '.json').catch(() => null)))).filter(Boolean);
+        window.OPS_SOURCE = 'github';
+      }
+      window.OPS_FILES = files;
       const merged = {};
       files.filter(Boolean).forEach((f) => {
         Object.entries(f.datasets).forEach(([id, rows]) => {
@@ -212,15 +234,16 @@ window.dash = (function () {
     <div class="op-headrow">
       <h1>Operation daily planning · <span data-source="report_info" data-field="report_date" data-fill="D">—</span></h1>
       <div class="op-upbtns">
-        <a class="op-btn op-btn-pri" id="op-upload-link" href="#" target="_blank" rel="noopener" hidden>⬆ Upload daily Excel</a>
-        <button class="op-btn" id="op-check-btn">✓ Check Excel</button>
-        <button class="op-btn" id="op-del-btn" type="button" hidden>🗑 Delete this day</button>
+        <button class="op-btn op-btn-pri" id="op-upload-btn" type="button">⬆ Upload daily Excel</button>
+        <button class="op-btn" id="op-check-btn" type="button">✓ Check Excel</button>
+        <button class="op-btn" id="op-del-btn" type="button">🗑 Delete this day</button>
+        <button class="op-btn" id="op-out-btn" type="button" hidden>Sign out</button>
         <a class="op-btn" href="template/Operation_Daily_Report_Template.xlsx" download>⬇ Excel template</a>
         <input type="file" id="op-file" accept=".xlsx" hidden>
       </div>
     </div>
     <div class="op-days" id="op-days" data-source="report_info" role="group" aria-label="Report day"></div>
-    <p class="op-pastnote" id="op-pastnote" hidden>You are looking at a past day. The portal keeps the last 7 report days; older days are removed automatically when a new day is uploaded.</p>
+    <p class="op-pastnote" id="op-pastnote" hidden>You are looking at a past day. The portal keeps the last 7 report days; older days are removed automatically when a new day is saved.</p>
     <p class="op-take">YGN fleet covered <b data-source="fleet_totals" data-field="actual_pct" data-fill="p" class="dash-skeleton">—</b> of car requests<span class="op-short" hidden>; <b data-source="city_short" data-field="city" data-pick="city" data-fill="t">—</b> is short <b data-source="city_short" data-field="short" data-pick="city" data-fill="n">—</b> car(s)</span>; <b data-source="pending_total" data-field="sites" data-fill="n" class="dash-skeleton">—</b> FTTx sites from <span data-source="report_info" data-field="prev_date" data-fill="d">—</span> are still pending; Box-Ops has planned <b data-source="box_totals" data-field="plan_pct" data-fill="p" class="dash-skeleton">—</b> of the ticket blog.</p>
     <div class="op-lastup" id="op-lastup" hidden></div>
     <div class="op-upanel" id="op-upanel" hidden></div>
@@ -1192,80 +1215,141 @@ window.OPX = (function () {
 
 </script>
 <script>
-/* ---------- upload links, last-upload status and "Check Excel" ---------- */
+/* ---------- upload, delete, last-upload status and "Check Excel" (all inside the portal) ---------- */
 (function () {
   const $ = (id) => document.getElementById(id);
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
   const fmtDay = (d) => d3.utcFormat('%-d %b %Y')(new Date(d));
-  // repository: from settings, else from the GitHub Pages address
-  let repo = (window.PORTAL_CONFIG.githubRepo || '').trim();
-  if (!repo && /\.github\.io$/.test(location.hostname)) {
-    const owner = location.hostname.split('.')[0], first = location.pathname.split('/').filter(Boolean)[0];
-    repo = owner + '/' + (first || owner + '.github.io');
-  }
-  const uploadUrl = repo ? 'https://github.com/' + repo + '/upload/' + (window.PORTAL_CONFIG.branch || 'main') + '/uploads' : null;
-  if (uploadUrl) { $('op-upload-link').href = uploadUrl; $('op-upload-link').hidden = false; }
-
-  // last upload result
-  fetch('data/last_upload.json?v=' + Date.now(), { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).then((s) => {
-    if (!s) return;
-    const box = $('op-lastup'); box.hidden = false;
-    const when = new Date(s.at).toLocaleString();
-    if (s.status === 'deleted') {
-      box.textContent = 'Last change: deleted report day ' + ((s.deleted || []).map(fmtDay).join(', ') || '—') + ' · ' + when
-        + (s.not_found && s.not_found.length ? ' · not found: ' + s.not_found.map(fmtDay).join(', ') : '');
-    } else if (s.status === 'ok') {
-      box.textContent = 'Last upload: ' + s.file + ' → ' + fmtDay(s.report_date) + (s.replaced ? ' (replaced)' : '') + ' · ' + when
-        + (s.removed && s.removed.length ? ' · removed old day(s): ' + s.removed.map(fmtDay).join(', ') : '');
-    } else {
-      box.className = 'op-lastup err';
-      box.append(el('b', '', 'Last upload failed: ' + s.file + ' (' + when + '). Nothing was changed. Fix the Excel and upload it again:'));
-      const ul = el('ul'); (s.errors || []).forEach((e) => ul.append(el('li', '', e))); box.append(ul);
-    }
-  }).catch(() => {});
-
-  // Delete the selected report day: opens GitHub with a ready-made delete request file
-  const delBtn = $('op-del-btn');
-  if (repo) {
-    delBtn.hidden = false;
-    delBtn.addEventListener('click', () => {
-      const day = typeof DAY !== 'undefined' ? DAY : null;
-      if (!day) { alert('There is no report day to delete.'); return; }
-      if (!confirm('Delete the report day ' + fmtDay(day) + '?\n\nGitHub opens with a small delete request. Click “Commit changes” there; the day disappears from the portal in 1–2 minutes. Only team members with upload access can do this.')) return;
-      const url = 'https://github.com/' + repo + '/new/' + (window.PORTAL_CONFIG.branch || 'main') + '/uploads?filename='
-        + encodeURIComponent('delete-' + day + '.txt') + '&value=' + encodeURIComponent('Delete report day ' + day + '\n');
-      window.open(url, '_blank', 'noopener');
-    });
-  }
-
-  // Check an Excel file in the browser before uploading it
+  const DB = window.OPS_DB, CFG = window.OPS_CFG;
   const panel = $('op-upanel'), fileIn = $('op-file');
+  let signed = false, mode = 'check';
+  const okEmail = (s) => !!(s && s.user && CFG.uploadEmails.includes(String(s.user.email || '').toLowerCase()));
+  const setSigned = (v) => { signed = v; $('op-out-btn').hidden = !v; };
   const close = () => { panel.hidden = true; panel.replaceChildren(); fileIn.value = ''; };
-  $('op-check-btn').addEventListener('click', () => fileIn.click());
+  const closeBtn = () => { const c = el('button', 'op-btn', 'Close'); c.type = 'button'; c.addEventListener('click', close); return c; };
+  const msg = (text, cls) => el('div', cls || 'op-note', text);
+  if (!DB) { ['op-upload-btn', 'op-del-btn'].forEach((id) => { $(id).hidden = true; }); }
+  else DB.auth.getSession().then(({ data }) => setSigned(okEmail(data && data.session))).catch(() => {});
+
+  // last upload line
+  function showLast() {
+    const box = $('op-lastup'); box.className = 'op-lastup'; box.replaceChildren();
+    const f = (window.OPS_FILES || []).filter((x) => x && x.uploaded_at).sort((a, b) => String(b.uploaded_at).localeCompare(String(a.uploaded_at)))[0];
+    if (!f) { box.hidden = true; return; }
+    box.hidden = false;
+    box.textContent = 'Last upload: ' + (f.file || 'Excel') + ' → ' + fmtDay(f.report_date) + ' · ' + new Date(f.uploaded_at).toLocaleString()
+      + ' · the portal keeps the last ' + CFG.keepDays + ' report days.';
+  }
+  dash.onData(showLast);
+
+  // sign in (same upload password as the FTTx portal)
+  function signIn(reason, after) {
+    panel.hidden = false;
+    const pw = el('input'); pw.type = 'password'; pw.placeholder = 'Upload password'; pw.setAttribute('aria-label', 'Upload password'); pw.autocomplete = 'current-password';
+    pw.style.cssText = 'font:inherit;padding:var(--cds-pad-xs) var(--cds-pad-sm);border:1px solid var(--color-border-line);border-radius:var(--cds-radius);background:var(--color-bg);color:var(--color-fg)';
+    const go = el('button', 'op-btn op-btn-pri', 'Sign in'); go.type = 'button';
+    const note = el('span', 'op-note'); note.setAttribute('role', 'status');
+    const run = async () => {
+      if (!pw.value) return; go.disabled = true; note.textContent = 'Checking…';
+      let ok = false;
+      for (const em of CFG.uploadEmails) { const r = await DB.auth.signInWithPassword({ email: em, password: pw.value }); if (!r.error) { ok = true; break; } }
+      go.disabled = false;
+      if (!ok) { note.textContent = 'Wrong password. Try again.'; return; }
+      setSigned(true);
+      if (window.OPS_SOURCE === 'github' && (window.OPS_FILES || []).length) {
+        note.textContent = 'Copying the saved days into the shared database…';
+        try { for (const f of window.OPS_FILES) { const { error } = await DB.from('ops_days').upsert({ report_date: f.report_date, uploaded_at: f.uploaded_at || new Date().toISOString(), file: f.file || '', datasets: f.datasets }); if (error) throw error; } await dash.refresh(); }
+        catch (e) { note.textContent = 'Signed in, but the saved days could not be copied: ' + (e.message || e); return; }
+      }
+      after();
+    };
+    go.addEventListener('click', run); pw.addEventListener('keydown', (e) => { if (e.key === 'Enter') run(); });
+    const row = el('div', 'op-upact'); row.append(pw, go, closeBtn(), note);
+    panel.replaceChildren(el('h3', '', 'Sign in'), msg(reason), row);
+    setTimeout(() => pw.focus(), 0);
+  }
+  async function stillSigned() {
+    try { const { data } = await DB.auth.getUser(); if (data && data.user && CFG.uploadEmails.includes(String(data.user.email || '').toLowerCase())) return true; } catch (e) {}
+    setSigned(false); return false;
+  }
+
+  // keep only the newest N report days
+  async function prune() {
+    const { data } = await DB.from('ops_days').select('report_date').order('report_date', { ascending: false });
+    const old = (data || []).slice(CFG.keepDays).map((r) => r.report_date);
+    if (old.length) await DB.from('ops_days').delete().in('report_date', old);
+    return old;
+  }
+
+  // buttons
+  $('op-check-btn').addEventListener('click', () => { mode = 'check'; fileIn.click(); });
+  $('op-upload-btn').addEventListener('click', async () => {
+    const pick = () => { mode = 'upload'; close(); fileIn.click(); };
+    if (signed && await stillSigned()) pick();
+    else signIn('Enter the upload password to add a report day. Everyone can view the portal without it.', pick);
+  });
+  $('op-out-btn').addEventListener('click', async () => { try { await DB.auth.signOut(); } catch (e) {} setSigned(false); close(); });
+  $('op-del-btn').addEventListener('click', async () => {
+    const day = typeof DAY !== 'undefined' ? DAY : null;
+    if (!day) { alert('There is no report day to delete.'); return; }
+    const doDelete = async () => {
+      if (!confirm('Delete the report day ' + fmtDay(day) + ' from the portal?\n\nThis can’t be undone. To bring it back, upload that day’s Excel again.')) { close(); return; }
+      panel.hidden = false; panel.replaceChildren(el('h3', '', 'Deleting ' + fmtDay(day) + '…'));
+      const { data, error } = await DB.from('ops_days').delete().eq('report_date', day).select('report_date');
+      if (error || !data || !data.length) {
+        panel.replaceChildren(el('h3', '', 'Not deleted'), msg(error ? error.message : 'Nothing was deleted. Sign out, sign in with the upload password again and retry.', 'op-lastup err'), el('div', 'op-upact'));
+        panel.lastChild.append(closeBtn()); return;
+      }
+      dash.setParams({ day: null }); await dash.refresh();
+      panel.replaceChildren(el('h3', '', 'Deleted'), msg(fmtDay(day) + ' was removed from the portal.', 'ok'), el('div', 'op-upact')); panel.lastChild.append(closeBtn());
+    };
+    if (signed && await stillSigned()) doDelete();
+    else signIn('Enter the upload password to delete ' + fmtDay(day) + '.', doDelete);
+  });
+
+  // read the chosen Excel: always check it; in upload mode also offer to save it
   fileIn.addEventListener('change', async () => {
     const f = fileIn.files && fileIn.files[0]; if (!f) return;
     panel.hidden = false; panel.replaceChildren(el('h3', '', 'Checking ' + f.name + '…'));
     let res;
     try { res = await window.OPX.parse(await f.arrayBuffer()); }
     catch (e) { res = { errors: [(e && e.message) || 'Could not read the file.'], warnings: [], counts: [], info: {} }; }
-    panel.replaceChildren(el('h3', '', 'Check · ' + f.name));
+    panel.replaceChildren(el('h3', '', (mode === 'upload' ? 'Upload · ' : 'Check · ') + f.name));
     if (res.info && res.info.report_date) panel.append(el('div', '', 'Report date: ' + fmtDay(res.info.report_date)));
     const cnt = el('div', 'op-upcounts'); (res.counts || []).forEach(([sh, n]) => cnt.append(el('span', '', sh + ': ' + n + ' rows'))); panel.append(cnt);
     if (res.info && res.info.report_date && !res.errors.length) {
       const days = window.opReportDays ? window.opReportDays() : [];
       const all = [...new Set([...days, res.info.report_date])].sort().reverse();
-      if (!all.slice(0, 7).includes(res.info.report_date)) res.errors.push('Report date is older than the 7 days the portal keeps, so it would be removed straight away. Check the date on the Report info sheet.');
-      else panel.append(el('div', 'op-note', (days.includes(res.info.report_date) ? 'Uploading it will replace the figures saved for this day. ' : 'Uploading it adds this day. ')
-        + (all.length > 7 ? 'The oldest day (' + all.slice(7).map(fmtDay).join(', ') + ') will be removed.' : 'The portal keeps the last 7 days.')));
+      if (!all.slice(0, CFG.keepDays).includes(res.info.report_date)) res.errors.push('Report date is older than the ' + CFG.keepDays + ' days the portal keeps, so it would be removed straight away. Check the date on the Report info sheet.');
+      else panel.append(msg((days.includes(res.info.report_date) ? 'Saving it will replace the figures saved for this day. ' : 'Saving it adds this day. ')
+        + (all.length > CFG.keepDays ? 'The oldest day (' + all.slice(CFG.keepDays).map(fmtDay).join(', ') + ') will be removed.' : 'The portal keeps the last ' + CFG.keepDays + ' days.')));
     }
-    if (res.errors.length) { panel.append(el('b', '', 'Fix these in the Excel before uploading:')); const ul = el('ul', 'err'); res.errors.slice(0, 40).forEach((e) => ul.append(el('li', '', e))); panel.append(ul); }
+    if (res.errors.length) { panel.append(el('b', '', 'Fix these in the Excel first:')); const ul = el('ul', 'err'); res.errors.slice(0, 40).forEach((e) => ul.append(el('li', '', e))); panel.append(ul); }
     if (res.warnings && res.warnings.length) { panel.append(el('b', '', 'Notes:')); const ul = el('ul', 'wrn'); res.warnings.forEach((e) => ul.append(el('li', '', e))); panel.append(ul); }
-    const act = el('div', 'op-upact');
+    const act = el('div', 'op-upact'), out = el('span', 'op-note'); out.setAttribute('role', 'status');
     if (!res.errors.length) {
       panel.append(el('div', 'ok', 'File looks good.'));
-      if (uploadUrl) { const a = el('a', 'op-btn op-btn-pri', '⬆ Upload it to GitHub'); a.href = uploadUrl; a.target = '_blank'; a.rel = 'noopener'; act.append(a); }
+      if (DB) {
+        const save = el('button', 'op-btn op-btn-pri', '💾 Save to portal'); save.type = 'button';
+        save.addEventListener('click', async () => {
+          const doSave = async () => {
+            if (!(await stillSigned())) { signIn('Your sign-in has expired. Enter the upload password again, then choose the file again.', () => { mode = 'upload'; close(); fileIn.click(); }); return; }
+            save.disabled = true; out.textContent = 'Saving…';
+            const d = res.info.report_date;
+            const { error } = await DB.from('ops_days').upsert({ report_date: d, uploaded_at: new Date().toISOString(), file: f.name, datasets: res.datasets });
+            if (error) { save.disabled = false; out.textContent = 'Save failed: ' + error.message; return; }
+            let removed = []; try { removed = await prune(); } catch (e) {}
+            dash.setParams({ day: null }); await dash.refresh();
+            panel.replaceChildren(el('h3', '', 'Saved'), msg(fmtDay(d) + ' is now in the portal.' + (removed.length ? ' Removed old day(s): ' + removed.map(fmtDay).join(', ') + '.' : ''), 'ok'), el('div', 'op-upact'));
+            panel.lastChild.append(closeBtn());
+          };
+          if (signed) doSave(); else signIn('Enter the upload password to save this day.', () => { mode = 'upload'; close(); fileIn.click(); });
+        });
+        act.append(save);
+      }
     }
-    const c = el('button', 'op-btn', 'Close'); c.addEventListener('click', close); act.append(c); panel.append(act);
+    act.append(closeBtn(), out); panel.append(act);
+    fileIn.value = '';
   });
 })();
 </script>
