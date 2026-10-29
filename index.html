@@ -227,6 +227,18 @@ window.dash = (function () {
 .op-tbl tr.tot td{background:color-mix(in srgb,var(--pc) 12%,transparent)}
 .op-tbl tfoot td{background:color-mix(in srgb,var(--pc) 12%,transparent)}
 @container (max-width:44rem){.op-sec{display:none}}
+/* 7-day blog trend */
+.op-smalls{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,16rem),1fr));gap:var(--cds-gap-sm);margin-top:var(--cds-gap-sm)}
+.op-mini{position:relative;min-width:0;border:1px solid var(--color-border-line);border-radius:var(--cds-radius);padding:var(--cds-pad-sm) var(--cds-pad-md);background:var(--color-panel)}
+.op-mini.all{grid-column:1/-1;background:color-mix(in srgb,var(--pc) 6%,var(--color-panel))}
+.op-mini h3{margin:0;font-size:var(--cds-font-size-body);font-weight:var(--cds-font-weight-medium)}
+.op-mini .m{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);font-variant-numeric:tabular-nums;margin:2px 0 4px}
+.op-mini .m b{color:var(--color-fg)}
+.op-mini svg{display:block}
+.op-mini text{font-size:var(--cds-font-size-caption);fill:var(--color-fg-muted);font-family:var(--font-anthropic-sans)}
+.op-mini text.sel{fill:var(--color-fg);font-weight:700}
+.op-up{color:var(--color-bad)} .op-down{color:var(--color-ok)}
+.op-tsearch{max-width:16rem}
 </style>
 
 <div class="op">
@@ -443,6 +455,17 @@ window.dash = (function () {
   <!-- BOX OPS -->
   <section class="op-page" id="boxops" hidden>
     <div class="op-grid">
+      <div class="op-card op-wide" id="box-trend">
+        <h2>Ticket &amp; POI blog trend · last 7 report days</h2>
+        <p class="op-note">Blog on each saved report day. Each chart has its own scale; hover a day to see the numbers. The change compares the latest day with the first day shown (red = blog grew, green = blog went down).</p>
+        <div class="op-legend" id="trend-legend"><span class="lg-t">Ticket blog</span><span class="lg-p">POI blog</span></div>
+        <div class="op-tools">
+          <button class="op-chip op-tview" data-view="region" aria-pressed="true">By region</button>
+          <button class="op-chip op-tview" data-view="tsp" aria-pressed="false">By township</button>
+          <input class="op-tsearch" type="search" placeholder="Find township or region…" aria-label="Find township or region" hidden>
+        </div>
+        <div class="op-smalls" id="trend-smalls" data-source="box_ops"></div>
+      </div>
       <div class="op-card op-wide" id="backlog">
         <h2>Box-Ops site planning by region &amp; township</h2>
         <p class="op-note"><span data-source="report_info" data-field="report_date" data-fill="d">—</span>, <span data-source="report_info" data-field="box_time" data-fill="t">—</span>. Tickets and POI: blog, planned today and plan %, then resources. Region subtotals and the grand total are summed from the township rows; their ratios are recomputed the same way as the report (Car/Team = SI team ÷ car, Team/Labour = labour ÷ SI team).</p>
@@ -939,7 +962,73 @@ function drawFttx() {
   ], { key: (r) => r.job, filter: (r) => !cableStage || r.stage === cableStage });
 }
 
+let trendView = 'region', trendQ = '';
+function drawTrend() {
+  const box = document.getElementById('trend-smalls');
+  box.replaceChildren();
+  const cT = dash.colors[0], cP = dash.colors[1];
+  const lg = document.querySelectorAll('#trend-legend span');
+  if (lg[0]) lg[0].style.setProperty('--sw', cT); if (lg[1]) lg[1].style.setProperty('--sw', cP);
+  const d = dash.data('box_ops');
+  if (d.status === 'loading') { box.classList.add('dash-skeleton'); box.style.minHeight = '10rem'; return; }
+  box.classList.remove('dash-skeleton'); box.style.minHeight = '';
+  if (d.status !== 'ok') { const f = document.createElement('div'); f.className = 'op-fail'; f.textContent = 'Failed to load'; box.append(f); return; }
+  const days = reportDays().slice(0, 7).reverse();
+  if (!days.length) return;
+  const rows = d.data.filter((r) => !r.is_total && days.includes(r.report_date));
+  // group: region, or township within region; keep the order of the latest day
+  const groups = new Map();
+  const add = (key, title, sub, r) => {
+    if (!groups.has(key)) groups.set(key, { key, title, sub, v: {} });
+    const g = groups.get(key), x = g.v[r.report_date] || (g.v[r.report_date] = { t: 0, p: 0 });
+    x.t += Number(r.ticket_blog || 0); x.p += Number(r.poi_blog || 0);
+  };
+  const ordered = rows.slice().sort((a, b) => (a.report_date === days[days.length - 1] ? 0 : 1) - (b.report_date === days[days.length - 1] ? 0 : 1));
+  if (trendView === 'region') {
+    rows.forEach((r) => add('__all', 'All regions', 'Total of every township', r));
+    ordered.forEach((r) => add('R:' + r.region, r.region, null, r));
+    groups.forEach((g) => { if (g.key !== '__all') { const n = new Set(rows.filter((r) => r.region === g.title).map((r) => r.tsp)).size; g.sub = n + (n === 1 ? ' township' : ' townships'); } });
+  } else {
+    ordered.forEach((r) => add('T:' + r.region + '|' + r.tsp, r.tsp, r.region, r));
+  }
+  let list = [...groups.values()];
+  if (trendView === 'tsp' && trendQ) list = list.filter((g) => (g.title + ' ' + g.sub).toLowerCase().includes(trendQ));
+  if (!list.length) { const f = document.createElement('div'); f.className = 'op-fail'; f.textContent = 'No township matches “' + trendQ + '”.'; box.append(f); return; }
+  const dl = (s) => d3.utcFormat('%-d %b')(new Date(s));
+  list.forEach((g) => {
+    const card = document.createElement('div'); card.className = 'op-mini' + (g.key === '__all' ? ' all' : '');
+    const first = days.find((x) => g.v[x]), last = days[days.length - 1], L = g.v[last], F = first ? g.v[first] : null;
+    const h3 = document.createElement('h3'); h3.textContent = g.title;
+    const m = document.createElement('div'); m.className = 'm';
+    const chg = (a, b) => { if (!F || !L || first === last) return ''; const dd = a - b; return dd ? ` <span class="${dd > 0 ? 'op-up' : 'op-down'}">(${dd > 0 ? '+' : ''}${fmtN(dd)})</span>` : ' (no change)'; };
+    m.innerHTML = (g.sub ? `${g.sub} · ` : '') + (L ? `${dl(last)}: tickets <b>${fmtN(L.t)}</b>${chg(L.t, F.t)} · POI <b>${fmtN(L.p)}</b>${chg(L.p, F.p)}` : `No data on ${dl(last)}`);
+    card.append(h3, m); box.append(card);
+    const W = Math.max(160, card.clientWidth - 24), H = g.key === '__all' ? 190 : 130, mg = { t: 6, r: 4, b: 18, l: 4 };
+    const svg = d3.select(card).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('height', H);
+    const max = d3.max(days, (x) => (g.v[x] ? Math.max(g.v[x].t, g.v[x].p) : 0)) || 1;
+    const x0 = d3.scaleBand(days, [mg.l, W - mg.r]).padding(0.22), x1 = d3.scaleBand(['t', 'p'], [0, x0.bandwidth()]).padding(0.08);
+    const y = d3.scaleLinear([0, max], [H - mg.b, mg.t + 12]);
+    const tt = tooltip(card);
+    const gd = svg.selectAll('g.d').data(days).join('g').attr('transform', (x) => `translate(${x0(x)},0)`);
+    [['t', cT], ['p', cP]].forEach(([k, c]) => {
+      gd.append('rect').attr('x', x1(k)).attr('width', x1.bandwidth()).attr('rx', 2)
+        .attr('y', (x) => (g.v[x] ? y(g.v[x][k]) : H - mg.b)).attr('height', (x) => (g.v[x] ? Math.max(0, H - mg.b - y(g.v[x][k])) : 0))
+        .attr('fill', c).attr('opacity', (x) => (x === DAY ? 1 : 0.75));
+    });
+    if (g.key === '__all') {
+      ['t', 'p'].forEach((k) => gd.append('text').attr('class', 'v').attr('x', x1(k) + x1.bandwidth() / 2).attr('text-anchor', 'middle')
+        .attr('y', (x) => (g.v[x] ? y(g.v[x][k]) - 3 : H - mg.b)).text((x) => (g.v[x] ? fmtN(g.v[x][k]) : '')));
+    }
+    gd.append('text').attr('x', x0.bandwidth() / 2).attr('y', H - 4).attr('text-anchor', 'middle').attr('class', (x) => (x === DAY ? 'sel' : ''))
+      .text((x) => d3.utcFormat(W < 300 ? '%-d' : '%-d %b')(new Date(x)));
+    gd.append('rect').attr('width', x0.bandwidth()).attr('height', H).attr('fill', 'transparent')
+      .on('mousemove', (ev, x) => tt.show(ev, g.title + ' · ' + d3.utcFormat('%a %-d %b')(new Date(x)), g.v[x] ? [[cT, 'Ticket blog', fmtN(g.v[x].t)], [cP, 'POI blog', fmtN(g.v[x].p)]] : [[null, 'No data', '—']]))
+      .on('mouseleave', () => tt.hide());
+  });
+}
+
 function drawBox() {
+  drawTrend();
   const lv = { High: 'bad', Watch: 'warn', Info: 'ok' };
   table('#tbl-att', 'box_attention', [
     { f: 'level', render: (td, v) => { const s = document.createElement('span'); s.className = 'op-pill ' + (lv[v] || ''); s.textContent = v; td.append(s); } },
@@ -1031,6 +1120,13 @@ document.querySelectorAll('#remarks .op-chip').forEach((b) => b.addEventListener
   document.querySelectorAll('#remarks .op-chip').forEach((c) => c.setAttribute('aria-pressed', String(c === b)));
   drawFttx();
 }));
+document.querySelectorAll('.op-tview').forEach((b) => b.addEventListener('click', () => {
+  trendView = b.dataset.view;
+  document.querySelectorAll('.op-tview').forEach((c) => c.setAttribute('aria-pressed', String(c === b)));
+  document.querySelector('.op-tsearch').hidden = trendView !== 'tsp';
+  drawTrend();
+}));
+document.querySelector('.op-tsearch').addEventListener('input', (e) => { trendQ = e.target.value.trim().toLowerCase(); drawTrend(); });
 document.querySelectorAll('.op-cchip').forEach((b) => b.addEventListener('click', () => {
   cableStage = b.dataset.stage;
   document.querySelectorAll('.op-cchip').forEach((c) => c.setAttribute('aria-pressed', String(c === b)));
