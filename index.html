@@ -51,7 +51,7 @@ window.OPS_CFG = {
   url: 'https://uemxuinndpaazwxayecv.supabase.co',
   key: 'sb_publishable_OLHjd18Q8zjcOgr-wPMjWA_w0f0huZf',
   uploadEmails: ['fttxreport@gmail.com', 'mgprotocol+fttx@gmail.com', 'mgprotocol@gmail.com'],
-  keepDays: 7,
+  keepDays: 28,
 };
 window.OPS_DB = (window.supabase && window.supabase.createClient)
   ? window.supabase.createClient(OPS_CFG.url, OPS_CFG.key, { auth: { storageKey: 'ops-upload-auth' } }) : null;
@@ -239,6 +239,10 @@ window.dash = (function () {
 .op-mini text.sel{fill:var(--color-fg);font-weight:700}
 .op-up{color:var(--color-bad)} .op-down{color:var(--color-ok)}
 .op-tsearch{max-width:16rem}
+.op-trsearch{max-width:16rem}
+.op-lgbtn{all:unset;cursor:pointer;border-radius:4px;padding:1px 4px}
+.op-lgbtn:focus-visible{outline:2px solid var(--color-fg)}
+.op-lgbtn[aria-pressed="false"]{opacity:.4;text-decoration:line-through}
 </style>
 
 <div class="op">
@@ -255,7 +259,7 @@ window.dash = (function () {
       </div>
     </div>
     <div class="op-days" id="op-days" data-source="report_info" role="group" aria-label="Report day"></div>
-    <p class="op-pastnote" id="op-pastnote" hidden>You are looking at a past day. The portal keeps the last 7 report days; older days are removed automatically when a new day is saved.</p>
+    <p class="op-pastnote" id="op-pastnote" hidden>You are looking at a past day. The portal keeps the last 4 weeks (28 report days); older days are removed automatically when a new day is saved.</p>
     <p class="op-take">YGN fleet covered <b data-source="fleet_totals" data-field="actual_pct" data-fill="p" class="dash-skeleton">—</b> of car requests<span class="op-short" hidden>; <b data-source="city_short" data-field="city" data-pick="city" data-fill="t">—</b> is short <b data-source="city_short" data-field="short" data-pick="city" data-fill="n">—</b> car(s)</span>; <b data-source="pending_total" data-field="sites" data-fill="n" class="dash-skeleton">—</b> FTTx sites from <span data-source="report_info" data-field="prev_date" data-fill="d">—</span> are still pending; Box-Ops has planned <b data-source="box_totals" data-field="plan_pct" data-fill="p" class="dash-skeleton">—</b> of the ticket blog.</p>
     <div class="op-lastup" id="op-lastup" hidden></div>
     <div class="op-upanel" id="op-upanel" hidden></div>
@@ -266,6 +270,7 @@ window.dash = (function () {
     <button class="op-tab" role="tab" data-page="fleet" aria-selected="false">Fleet</button>
     <button class="op-tab" role="tab" data-page="fttx" aria-selected="false">FTTx-Ops</button>
     <button class="op-tab" role="tab" data-page="boxops" aria-selected="false">Box-Ops</button>
+    <button class="op-tab" role="tab" data-page="trending" aria-selected="false">Trending</button>
   </nav>
 
   <!-- OVERVIEW -->
@@ -452,16 +457,55 @@ window.dash = (function () {
     </div>
   </section>
 
+  <!-- TRENDING -->
+  <section class="op-page" id="trending" hidden>
+    <div class="op-grid">
+      <p class="op-note op-wide" id="tr-note" style="margin:0"></p>
+      <div class="op-card op-wide" id="tr-box-blog">
+        <h2>Box-Ops · Ticket &amp; POI blog</h2>
+        <p class="op-note">Open tickets and POI waiting on each report day. Red change = blog grew, green = blog went down. Click a legend item to hide or show it.</p>
+        <div class="op-legend"></div>
+        <div class="op-tools"><button class="op-chip op-trview" data-card="box-blog" data-view="region" aria-pressed="true">By region</button><button class="op-chip op-trview" data-card="box-blog" data-view="tsp" aria-pressed="false">By township</button><input class="op-trsearch" data-card="box-blog" type="search" placeholder="Find township or region…" aria-label="Find township or region" hidden></div>
+        <div class="op-smalls"></div>
+      </div>
+      <div class="op-card op-wide" id="tr-box-res">
+        <h2>Box-Ops · SI team, car &amp; labour</h2>
+        <p class="op-note">Daily SI teams, cars and labour, summed from the township rows.</p>
+        <div class="op-legend"></div>
+        <div class="op-tools"><button class="op-chip op-trview" data-card="box-res" data-view="region" aria-pressed="true">By region</button><button class="op-chip op-trview" data-card="box-res" data-view="tsp" aria-pressed="false">By township</button><input class="op-trsearch" data-card="box-res" type="search" placeholder="Find township or region…" aria-label="Find township or region" hidden></div>
+        <div class="op-smalls"></div>
+      </div>
+      <div class="op-card op-wide" id="tr-fttx">
+        <h2>FTTx-Ops · Broken / high-loss, migration, team &amp; car</h2>
+        <p class="op-note">By region, from today’s blog table on each report day.</p>
+        <div class="op-legend"></div>
+        
+        <div class="op-smalls"></div>
+      </div>
+      <div class="op-card op-wide" id="tr-fleet">
+        <h2>Fleet · Actual cars &amp; actual %</h2>
+        <p class="op-note">By city: bars are cars actually assigned, the line is actual ÷ request (right-hand scale).</p>
+        <div class="op-legend"></div>
+        
+        <div class="op-smalls"></div>
+      </div>
+    </div>
+  </section>
+
   <!-- BOX OPS -->
   <section class="op-page" id="boxops" hidden>
     <div class="op-grid">
       <div class="op-card op-wide" id="box-trend">
-        <h2>Ticket &amp; POI blog trend · last 7 report days</h2>
+        <h2>Ticket &amp; POI blog trend</h2>
         <p class="op-note">Blog on each saved report day. Each chart has its own scale; hover a day to see the numbers. The change compares the latest day with the first day shown (red = blog grew, green = blog went down).</p>
         <div class="op-legend" id="trend-legend"><span class="lg-t">Ticket blog</span><span class="lg-p">POI blog</span></div>
         <div class="op-tools">
           <button class="op-chip op-tview" data-view="region" aria-pressed="true">By region</button>
           <button class="op-chip op-tview" data-view="tsp" aria-pressed="false">By township</button>
+          <span class="op-dlab" style="margin-left:var(--cds-gap-sm)">Period:</span>
+          <button class="op-chip op-tdays" data-days="7" aria-pressed="true">7 days</button>
+          <button class="op-chip op-tdays" data-days="14" aria-pressed="false">14 days</button>
+          <button class="op-chip op-tdays" data-days="28" aria-pressed="false">4 weeks</button>
           <input class="op-tsearch" type="search" placeholder="Find township or region…" aria-label="Find township or region" hidden>
         </div>
         <div class="op-smalls" id="trend-smalls" data-source="box_ops"></div>
@@ -962,7 +1006,7 @@ function drawFttx() {
   ], { key: (r) => r.job, filter: (r) => !cableStage || r.stage === cableStage });
 }
 
-let trendView = 'region', trendQ = '';
+let trendView = 'region', trendQ = '', trendDays = 7;
 function drawTrend() {
   const box = document.getElementById('trend-smalls');
   box.replaceChildren();
@@ -973,7 +1017,7 @@ function drawTrend() {
   if (d.status === 'loading') { box.classList.add('dash-skeleton'); box.style.minHeight = '10rem'; return; }
   box.classList.remove('dash-skeleton'); box.style.minHeight = '';
   if (d.status !== 'ok') { const f = document.createElement('div'); f.className = 'op-fail'; f.textContent = 'Failed to load'; box.append(f); return; }
-  const days = reportDays().slice(0, 7).reverse();
+  const days = reportDays().slice(0, trendDays).reverse();
   if (!days.length) return;
   const rows = d.data.filter((r) => !r.is_total && days.includes(r.report_date));
   // group: region, or township within region; keep the order of the latest day
@@ -1015,16 +1059,152 @@ function drawTrend() {
         .attr('y', (x) => (g.v[x] ? y(g.v[x][k]) : H - mg.b)).attr('height', (x) => (g.v[x] ? Math.max(0, H - mg.b - y(g.v[x][k])) : 0))
         .attr('fill', c).attr('opacity', (x) => (x === DAY ? 1 : 0.75));
     });
-    if (g.key === '__all') {
+    const lastI = days.length - 1, step = Math.max(1, Math.ceil(days.length / Math.max(2, Math.floor(W / 62)))),
+      showLab = (x, i) => i === lastI || (i % step === 0 && lastI - i >= Math.max(1, step * 0.75)) || (x === DAY && Math.abs(lastI - i) >= step * 0.75);
+    if (g.key === '__all' && days.length <= 10) {
       ['t', 'p'].forEach((k) => gd.append('text').attr('class', 'v').attr('x', x1(k) + x1.bandwidth() / 2).attr('text-anchor', 'middle')
         .attr('y', (x) => (g.v[x] ? y(g.v[x][k]) - 3 : H - mg.b)).text((x) => (g.v[x] ? fmtN(g.v[x][k]) : '')));
     }
-    gd.append('text').attr('x', x0.bandwidth() / 2).attr('y', H - 4).attr('text-anchor', 'middle').attr('class', (x) => (x === DAY ? 'sel' : ''))
-      .text((x) => d3.utcFormat(W < 300 ? '%-d' : '%-d %b')(new Date(x)));
+    gd.append('text').attr('x', (x, i) => (i === 0 && days.length > 10 ? 0 : i === lastI && days.length > 10 ? x0.bandwidth() : x0.bandwidth() / 2)).attr('y', H - 4).attr('text-anchor', (x, i) => (i === 0 && days.length > 10 ? 'start' : i === lastI && days.length > 10 ? 'end' : 'middle')).attr('class', (x) => (x === DAY ? 'sel' : ''))
+      .text((x, i) => (showLab(x, i) ? d3.utcFormat(W < 300 || days.length > 10 ? '%-d/%-m' : '%-d %b')(new Date(x)) : ''));
     gd.append('rect').attr('width', x0.bandwidth()).attr('height', H).attr('fill', 'transparent')
       .on('mousemove', (ev, x) => tt.show(ev, g.title + ' · ' + d3.utcFormat('%a %-d %b')(new Date(x)), g.v[x] ? [[cT, 'Ticket blog', fmtN(g.v[x].t)], [cP, 'POI blog', fmtN(g.v[x].p)]] : [[null, 'No data', '—']]))
       .on('mouseleave', () => tt.hide());
   });
+}
+
+// ---------- Trending (last 14 report days) ----------
+const TR_DAYS = 14;
+const TRS = { 'box-blog': { view: 'region', q: '' }, 'box-res': { view: 'region', q: '' }, fttx: {}, fleet: {} };
+const TRH = { 'box-blog': new Set(), 'box-res': new Set(), fttx: new Set(), fleet: new Set() };
+const pts1 = (v) => (v > 0 ? '+' : '') + (v * 100).toFixed(1) + ' pts';
+const TRC = {
+  'box-blog': { src: 'box_ops', filter: (r) => !r.is_total, views: true, totalTitle: 'All regions', sum: ['ticket_blog', 'poi_blog'],
+    metrics: [{ k: 'ticket_blog', label: 'Ticket blog', short: 'tickets', c: 0, type: 'bar', good: 'down' }, { k: 'poi_blog', label: 'POI blog', short: 'POI', c: 1, type: 'bar', good: 'down' }] },
+  'box-res': { src: 'box_ops', filter: (r) => !r.is_total, views: true, totalTitle: 'All regions', sum: ['si_team', 'car', 'labour'],
+    metrics: [{ k: 'si_team', label: 'SI team', short: 'SI team', c: 3, type: 'line' }, { k: 'car', label: 'Car', short: 'car', c: 0, type: 'line' }, { k: 'labour', label: 'Labour', short: 'labour', c: 6, type: 'line' }] },
+  'fttx': { src: 'fttx_blog', views: false, group: 'region', totalTitle: 'All regions', sum: ['broken_highloss', 'migration', 'team', 'car'],
+    metrics: [{ k: 'broken_highloss', label: 'Broken / high-loss', short: 'broken', c: 7, type: 'line', good: 'down' }, { k: 'migration', label: 'Migration / activities', short: 'migration', c: 4, type: 'line' },
+      { k: 'team', label: 'Team', short: 'team', c: 6, type: 'line' }, { k: 'car', label: 'Car', short: 'car', c: 0, type: 'line' }] },
+  'fleet': { src: 'city_cars', filter: (r) => r.city !== 'All Cities', views: false, group: 'city', totalTitle: 'All cities', sum: ['actual', 'request'],
+    metrics: [{ k: 'actual', label: 'Actual cars', short: 'actual', c: 1, type: 'bar', good: 'up' },
+      { k: 'pct', label: 'Actual % (line)', short: 'actual %', c: 2, type: 'line', axis: 'R', good: 'up', calc: (a) => (a.request ? a.actual / a.request : null), fmt: (v) => FMT.p1(v), delta: pts1 }] },
+};
+const trVal = (m, a) => (!a ? null : m.calc ? m.calc(a) : a[m.k]);
+
+function trDraw(id) {
+  const cfg = TRC[id], st = TRS[id] || {}, cardEl = document.getElementById('tr-' + id), box = cardEl.querySelector('.op-smalls');
+  box.replaceChildren();
+  const leg = cardEl.querySelector('.op-legend');
+  leg.replaceChildren(...cfg.metrics.map((m) => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'op-lgbtn';
+    const off = TRH[id].has(m.k); b.setAttribute('aria-pressed', String(!off)); b.title = (off ? 'Show ' : 'Hide ') + m.label;
+    const s = document.createElement('span'); s.textContent = m.label; s.style.setProperty('--sw', dash.colors[m.c]); b.append(s);
+    b.addEventListener('click', () => { const H = TRH[id]; if (H.has(m.k)) H.delete(m.k); else if (H.size < cfg.metrics.length - 1) H.add(m.k); trDraw(id); });
+    return b;
+  }));
+  const cfgShown = { ...cfg, metrics: cfg.metrics.filter((m) => !TRH[id].has(m.k)) };
+  const d = dash.data(cfg.src);
+  if (d.status === 'loading') { box.classList.add('dash-skeleton'); box.style.minHeight = '8rem'; return; }
+  box.classList.remove('dash-skeleton'); box.style.minHeight = '';
+  if (d.status !== 'ok') { const f = document.createElement('div'); f.className = 'op-fail'; f.textContent = 'Failed to load'; box.append(f); return; }
+  const days = reportDays().slice(0, TR_DAYS).reverse();
+  if (!days.length) return;
+  const last = days[days.length - 1];
+  const rows = d.data.filter((r) => days.includes(r.report_date) && (!cfg.filter || cfg.filter(r)));
+  const groups = new Map();
+  const add = (key, title, sub, r) => {
+    if (!groups.has(key)) groups.set(key, { key, title, sub, v: {} });
+    const g = groups.get(key), a = g.v[r.report_date] || (g.v[r.report_date] = {});
+    cfg.sum.forEach((k) => { a[k] = (a[k] || 0) + Number(r[k] || 0); });
+  };
+  rows.forEach((r) => add('__all', cfg.totalTitle, '', r));
+  const ordered = rows.slice().sort((a, b) => (a.report_date === last ? 0 : 1) - (b.report_date === last ? 0 : 1));
+  const view = cfg.views ? st.view : cfg.group;
+  ordered.forEach((r) => { if (view === 'tsp') add('T:' + r.region + '|' + r.tsp, r.tsp, r.region, r); else add('G:' + r[view], r[view], null, r); });
+  if (cfg.views && view === 'region') groups.forEach((g) => { if (g.key !== '__all') { const n = new Set(rows.filter((r) => r.region === g.title).map((r) => r.tsp)).size; g.sub = n + (n === 1 ? ' township' : ' townships'); } });
+  let list = [...groups.values()];
+  if (st.q) list = list.filter((g) => g.key === '__all' || (g.title + ' ' + (g.sub || '')).toLowerCase().includes(st.q));
+  list.forEach((g) => trMini(box, g, days, cfgShown));
+  if (st.q && list.length === 1) { const f = document.createElement('div'); f.className = 'op-fail'; f.textContent = 'No township matches “' + st.q + '”.'; box.append(f); }
+}
+
+function trMini(box, g, days, cfg) {
+  const card = document.createElement('div'); card.className = 'op-mini' + (g.key === '__all' ? ' all' : '');
+  const dl = (s) => d3.utcFormat('%-d %b')(new Date(s));
+  const first = days.find((x) => g.v[x]), last = days[days.length - 1], L = g.v[last], F = first ? g.v[first] : null;
+  const h3 = document.createElement('h3'); h3.textContent = g.title;
+  const m = document.createElement('div'); m.className = 'm';
+  const parts = cfg.metrics.map((mt) => {
+    const lv = trVal(mt, L), fv = trVal(mt, F), f = mt.fmt || fmtN;
+    let s = `${mt.short} <b>${lv == null ? '—' : f(lv)}</b>`;
+    if (lv != null && fv != null && first !== last) {
+      const dd = lv - fv;
+      if (Math.abs(dd) > 1e-9) {
+        const cls = mt.good === 'up' ? (dd > 0 ? 'op-down' : 'op-up') : mt.good === 'down' ? (dd > 0 ? 'op-up' : 'op-down') : '';
+        s += ` <span class="${cls}">(${mt.delta ? mt.delta(dd) : (dd > 0 ? '+' : '') + fmtN(dd)})</span>`;
+      }
+    }
+    return s;
+  });
+  m.innerHTML = (g.sub ? `${g.sub} · ` : '') + (L ? `${dl(last)}: ` + parts.join(' · ') : `No data on ${dl(last)}`);
+  card.append(h3, m); box.append(card);
+  const hasR = cfg.metrics.some((mt) => mt.axis === 'R');
+  const W = Math.max(180, card.clientWidth - 24), H = g.key === '__all' ? 200 : 140, mg = { t: 8, r: hasR ? 34 : 4, b: 18, l: 4 };
+  const svg = d3.select(card).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('height', H);
+  const bars = cfg.metrics.filter((mt) => mt.type === 'bar'), lines = cfg.metrics.filter((mt) => mt.type === 'line');
+  const leftVals = [];
+  days.forEach((x) => cfg.metrics.filter((mt) => mt.axis !== 'R').forEach((mt) => { const v = trVal(mt, g.v[x]); if (v != null) leftVals.push(v); }));
+  const maxL = d3.max(leftVals) || 1;
+  const rVals = []; days.forEach((x) => cfg.metrics.filter((mt) => mt.axis === 'R').forEach((mt) => { const v = trVal(mt, g.v[x]); if (v != null) rVals.push(v); }));
+  const maxR = rVals.length ? Math.max(d3.max(rVals) + 0.02, 0.05) : 1, minR = rVals.length ? Math.max(0, Math.min(d3.min(rVals) - 0.05, maxR - 0.1)) : 0;
+  const x0 = d3.scaleBand(days, [mg.l, W - mg.r]).padding(0.2);
+  const yL = d3.scaleLinear([0, maxL], [H - mg.b, mg.t + 10]), yR = d3.scaleLinear([minR, maxR], [H - mg.b, mg.t + 10]);
+  if (bars.length) {
+    const x1 = d3.scaleBand(bars.map((mt) => mt.k), [0, x0.bandwidth()]).padding(0.08);
+    bars.forEach((mt) => {
+      svg.append('g').selectAll('rect').data(days).join('rect')
+        .attr('x', (x) => x0(x) + x1(mt.k)).attr('width', x1.bandwidth()).attr('rx', 1.5)
+        .attr('y', (x) => { const v = trVal(mt, g.v[x]); return v == null ? H - mg.b : yL(v); })
+        .attr('height', (x) => { const v = trVal(mt, g.v[x]); return v == null ? 0 : Math.max(0, H - mg.b - yL(v)); })
+        .attr('fill', dash.colors[mt.c]).attr('opacity', (x) => (x === DAY ? 1 : 0.78));
+      if (g.key === '__all' && x1.bandwidth() >= 22) {
+        svg.append('g').selectAll('text').data(days.filter((x) => trVal(mt, g.v[x]) != null)).join('text').attr('class', 'v')
+          .attr('x', (x) => x0(x) + x1(mt.k) + x1.bandwidth() / 2).attr('y', (x) => yL(trVal(mt, g.v[x])) - 3).attr('text-anchor', 'middle').text((x) => fmtN(trVal(mt, g.v[x])));
+      }
+    });
+  }
+  lines.forEach((mt) => {
+    const y = mt.axis === 'R' ? yR : yL;
+    const pts = days.map((x) => [x0(x) + x0.bandwidth() / 2, trVal(mt, g.v[x])]).filter((p) => p[1] != null);
+    if (!pts.length) return;
+    const dpath = d3.line()(pts.map((p) => [p[0], y(p[1])]));
+    if (bars.length) svg.append('path').attr('d', dpath).attr('fill', 'none').attr('stroke', 'var(--color-panel)').attr('stroke-width', 5).attr('stroke-linejoin', 'round');
+    svg.append('path').attr('d', dpath).attr('fill', 'none').attr('stroke', dash.colors[mt.c]).attr('stroke-width', 2).attr('stroke-linejoin', 'round');
+    svg.append('g').selectAll('circle').data(pts).join('circle').attr('cx', (p) => p[0]).attr('cy', (p) => y(p[1])).attr('r', 2.6).attr('fill', dash.colors[mt.c]);
+  });
+  if (hasR) {
+    svg.append('text').attr('x', W - 2).attr('y', yR(maxR) + 3).attr('text-anchor', 'end').text(d3.format('.0%')(maxR));
+    svg.append('text').attr('x', W - 2).attr('y', yR(minR)).attr('text-anchor', 'end').text(d3.format('.0%')(minR));
+  }
+  const step = x0.bandwidth() < 16 ? 2 : 1, fmtL = d3.utcFormat(x0.bandwidth() < 34 ? '%-d' : '%-d %b');
+  svg.append('g').selectAll('text').data(days.filter((x, i) => (days.length - 1 - i) % step === 0)).join('text')
+    .attr('x', (x) => x0(x) + x0.bandwidth() / 2).attr('y', H - 4).attr('text-anchor', 'middle').attr('class', (x) => (x === DAY ? 'sel' : '')).text((x) => fmtL(new Date(x)));
+  const tt = tooltip(card);
+  svg.append('g').selectAll('rect').data(days).join('rect').attr('x', (x) => x0(x) - (x0.step() - x0.bandwidth()) / 2).attr('width', x0.step()).attr('height', H).attr('fill', 'transparent')
+    .on('mousemove', (ev, x) => tt.show(ev, g.title + ' · ' + d3.utcFormat('%a %-d %b')(new Date(x)),
+      g.v[x] ? cfg.metrics.map((mt) => { const v = trVal(mt, g.v[x]); return [dash.colors[mt.c], mt.label.replace(' (line)', ''), v == null ? '—' : (mt.fmt || fmtN)(v)]; }) : [[null, 'No data', '—']]))
+    .on('mouseleave', () => tt.hide());
+}
+
+function drawTrending() {
+  const days = reportDays().slice(0, TR_DAYS);
+  const note = document.getElementById('tr-note');
+  if (days.length) {
+    const fmt = (s) => d3.utcFormat('%-d %b %Y')(new Date(s));
+    note.textContent = `Last ${days.length} report day${days.length > 1 ? 's' : ''}: ${fmt(days[days.length - 1])} – ${fmt(days[0])}.` + (days.length < TR_DAYS ? ` Up to ${TR_DAYS} days are shown once they are saved.` : '') + ' Each chart has its own scale; hover a day to see the numbers. The change compares the latest day with the first day shown.';
+  } else note.textContent = '';
+  Object.keys(TRC).forEach(trDraw);
 }
 
 function drawBox() {
@@ -1091,12 +1271,12 @@ function drawDays() {
 }
 window.opReportDays = reportDays;
 let cur = 'overview';
-const pages = { overview: drawOverview, fleet: drawFleet, fttx: drawFttx, boxops: drawBox };
+const pages = { overview: drawOverview, fleet: drawFleet, fttx: drawFttx, boxops: drawBox, trending: drawTrending };
 let AREA_C = {};
 function paint() {
   const root = document.querySelector('.op'), c = dash.colors;
   c.forEach((col, i) => root.style.setProperty('--c' + i, col));
-  const pc = { overview: c[0], fleet: c[1], fttx: c[2], boxops: c[3] };
+  const pc = { overview: c[0], fleet: c[1], fttx: c[2], boxops: c[3], trending: c[5] };
   document.querySelectorAll('.op-page').forEach((p) => p.style.setProperty('--pc', pc[p.id]));
   document.querySelectorAll('.op-tab').forEach((t) => t.style.setProperty('--pc', pc[t.dataset.page]));
   document.querySelectorAll('.op-tile').forEach((t, i) => t.style.setProperty('--acc', c[i % c.length]));
@@ -1126,7 +1306,19 @@ document.querySelectorAll('.op-tview').forEach((b) => b.addEventListener('click'
   document.querySelector('.op-tsearch').hidden = trendView !== 'tsp';
   drawTrend();
 }));
+document.querySelectorAll('.op-tdays').forEach((b) => b.addEventListener('click', () => {
+  trendDays = Number(b.dataset.days);
+  document.querySelectorAll('.op-tdays').forEach((c) => c.setAttribute('aria-pressed', String(c === b)));
+  drawTrend();
+}));
 document.querySelector('.op-tsearch').addEventListener('input', (e) => { trendQ = e.target.value.trim().toLowerCase(); drawTrend(); });
+document.querySelectorAll('.op-trview').forEach((b) => b.addEventListener('click', () => {
+  const id = b.dataset.card; TRS[id].view = b.dataset.view;
+  document.querySelectorAll(`.op-trview[data-card="${id}"]`).forEach((c) => c.setAttribute('aria-pressed', String(c === b)));
+  const s = document.querySelector(`.op-trsearch[data-card="${id}"]`); s.hidden = b.dataset.view !== 'tsp';
+  trDraw(id);
+}));
+document.querySelectorAll('.op-trsearch').forEach((s) => s.addEventListener('input', (e) => { TRS[s.dataset.card].q = e.target.value.trim().toLowerCase(); trDraw(s.dataset.card); }));
 document.querySelectorAll('.op-cchip').forEach((b) => b.addEventListener('click', () => {
   cableStage = b.dataset.stage;
   document.querySelectorAll('.op-cchip').forEach((c) => c.setAttribute('aria-pressed', String(c === b)));
