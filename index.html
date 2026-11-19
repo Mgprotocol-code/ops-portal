@@ -463,28 +463,28 @@ window.dash = (function () {
       <p class="op-note op-wide" id="tr-note" style="margin:0"></p>
       <div class="op-card op-wide" id="tr-box-blog">
         <h2>Box-Ops · Ticket &amp; POI blog</h2>
-        <p class="op-note">Open tickets and POI waiting on each report day. Red change = blog grew, green = blog went down. Click a legend item to hide or show it.</p>
+        <p class="op-note">Open tickets and POI waiting on each report day. Bars = the value on each day, dashed line = trend. Red change = blog grew, green = blog went down. Click a legend item to hide or show it.</p>
         <div class="op-legend"></div>
         <div class="op-tools"><button class="op-chip op-trview" data-card="box-blog" data-view="region" aria-pressed="true">By region</button><button class="op-chip op-trview" data-card="box-blog" data-view="tsp" aria-pressed="false">By township</button><input class="op-trsearch" data-card="box-blog" type="search" placeholder="Find township or region…" aria-label="Find township or region" hidden></div>
         <div class="op-smalls"></div>
       </div>
       <div class="op-card op-wide" id="tr-box-res">
         <h2>Box-Ops · SI team, car &amp; labour</h2>
-        <p class="op-note">Daily SI teams, cars and labour, summed from the township rows.</p>
+        <p class="op-note">Daily SI teams, cars and labour, summed from the township rows. Bars = the value on each day, dashed line = trend.</p>
         <div class="op-legend"></div>
         <div class="op-tools"><button class="op-chip op-trview" data-card="box-res" data-view="region" aria-pressed="true">By region</button><button class="op-chip op-trview" data-card="box-res" data-view="tsp" aria-pressed="false">By township</button><input class="op-trsearch" data-card="box-res" type="search" placeholder="Find township or region…" aria-label="Find township or region" hidden></div>
         <div class="op-smalls"></div>
       </div>
       <div class="op-card op-wide" id="tr-fttx">
         <h2>FTTx-Ops · Broken / high-loss, migration, team &amp; car</h2>
-        <p class="op-note">By region, from today’s blog table on each report day.</p>
+        <p class="op-note">By region, from today’s blog table on each report day. Bars = the value on each day, dashed line = trend. Click a legend item to hide or show it.</p>
         <div class="op-legend"></div>
         
         <div class="op-smalls"></div>
       </div>
       <div class="op-card op-wide" id="tr-fleet">
         <h2>Fleet · Actual cars &amp; actual %</h2>
-        <p class="op-note">By city: bars are cars actually assigned, the line is actual ÷ request (right-hand scale).</p>
+        <p class="op-note">By city: cars actually assigned and actual ÷ request (right-hand scale). Bars = the value on each day, dashed line = trend.</p>
         <div class="op-legend"></div>
         
         <div class="op-smalls"></div>
@@ -1082,13 +1082,13 @@ const TRC = {
   'box-blog': { src: 'box_ops', filter: (r) => !r.is_total, views: true, totalTitle: 'All regions', sum: ['ticket_blog', 'poi_blog'],
     metrics: [{ k: 'ticket_blog', label: 'Ticket blog', short: 'tickets', c: 0, type: 'bar', good: 'down' }, { k: 'poi_blog', label: 'POI blog', short: 'POI', c: 1, type: 'bar', good: 'down' }] },
   'box-res': { src: 'box_ops', filter: (r) => !r.is_total, views: true, totalTitle: 'All regions', sum: ['si_team', 'car', 'labour'],
-    metrics: [{ k: 'si_team', label: 'SI team', short: 'SI team', c: 3, type: 'line' }, { k: 'car', label: 'Car', short: 'car', c: 0, type: 'line' }, { k: 'labour', label: 'Labour', short: 'labour', c: 6, type: 'line' }] },
+    metrics: [{ k: 'si_team', label: 'SI team', short: 'SI team', c: 3, type: 'bar' }, { k: 'car', label: 'Car', short: 'car', c: 0, type: 'bar' }, { k: 'labour', label: 'Labour', short: 'labour', c: 6, type: 'bar' }] },
   'fttx': { src: 'fttx_blog', views: false, group: 'region', totalTitle: 'All regions', sum: ['broken_highloss', 'migration', 'team', 'car'],
-    metrics: [{ k: 'broken_highloss', label: 'Broken / high-loss', short: 'broken', c: 7, type: 'line', good: 'down' }, { k: 'migration', label: 'Migration / activities', short: 'migration', c: 4, type: 'line' },
-      { k: 'team', label: 'Team', short: 'team', c: 6, type: 'line' }, { k: 'car', label: 'Car', short: 'car', c: 0, type: 'line' }] },
+    metrics: [{ k: 'broken_highloss', label: 'Broken / high-loss', short: 'broken', c: 7, type: 'bar', good: 'down' }, { k: 'migration', label: 'Migration / activities', short: 'migration', c: 4, type: 'bar' },
+      { k: 'team', label: 'Team', short: 'team', c: 6, type: 'bar' }, { k: 'car', label: 'Car', short: 'car', c: 0, type: 'bar' }] },
   'fleet': { src: 'city_cars', filter: (r) => r.city !== 'All Cities', views: false, group: 'city', totalTitle: 'All cities', sum: ['actual', 'request'],
     metrics: [{ k: 'actual', label: 'Actual cars', short: 'actual', c: 1, type: 'bar', good: 'up' },
-      { k: 'pct', label: 'Actual % (line)', short: 'actual %', c: 2, type: 'line', axis: 'R', good: 'up', calc: (a) => (a.request ? a.actual / a.request : null), fmt: (v) => FMT.p1(v), delta: pts1 }] },
+      { k: 'pct', label: 'Actual %', short: 'actual %', c: 2, type: 'bar', axis: 'R', good: 'up', calc: (a) => (a.request ? a.actual / a.request : null), fmt: (v) => FMT.p1(v), delta: pts1 }] },
 };
 const trVal = (m, a) => (!a ? null : m.calc ? m.calc(a) : a[m.k]);
 
@@ -1152,40 +1152,51 @@ function trMini(box, g, days, cfg) {
   const hasR = cfg.metrics.some((mt) => mt.axis === 'R');
   const W = Math.max(180, card.clientWidth - 24), H = g.key === '__all' ? 200 : 140, mg = { t: 8, r: hasR ? 34 : 4, b: 18, l: 4 };
   const svg = d3.select(card).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('height', H);
-  const bars = cfg.metrics.filter((mt) => mt.type === 'bar'), lines = cfg.metrics.filter((mt) => mt.type === 'line');
-  const leftVals = [];
-  days.forEach((x) => cfg.metrics.filter((mt) => mt.axis !== 'R').forEach((mt) => { const v = trVal(mt, g.v[x]); if (v != null) leftVals.push(v); }));
-  const maxL = d3.max(leftVals) || 1;
-  const rVals = []; days.forEach((x) => cfg.metrics.filter((mt) => mt.axis === 'R').forEach((mt) => { const v = trVal(mt, g.v[x]); if (v != null) rVals.push(v); }));
-  const maxR = rVals.length ? Math.max(d3.max(rVals) + 0.02, 0.05) : 1, minR = rVals.length ? Math.max(0, Math.min(d3.min(rVals) - 0.05, maxR - 0.1)) : 0;
-  const x0 = d3.scaleBand(days, [mg.l, W - mg.r]).padding(0.2);
-  const yL = d3.scaleLinear([0, maxL], [H - mg.b, mg.t + 10]), yR = d3.scaleLinear([minR, maxR], [H - mg.b, mg.t + 10]);
-  if (bars.length) {
-    const x1 = d3.scaleBand(bars.map((mt) => mt.k), [0, x0.bandwidth()]).padding(0.08);
-    bars.forEach((mt) => {
-      svg.append('g').selectAll('rect').data(days).join('rect')
-        .attr('x', (x) => x0(x) + x1(mt.k)).attr('width', x1.bandwidth()).attr('rx', 1.5)
-        .attr('y', (x) => { const v = trVal(mt, g.v[x]); return v == null ? H - mg.b : yL(v); })
-        .attr('height', (x) => { const v = trVal(mt, g.v[x]); return v == null ? 0 : Math.max(0, H - mg.b - yL(v)); })
-        .attr('fill', dash.colors[mt.c]).attr('opacity', (x) => (x === DAY ? 1 : 0.78));
-      if (g.key === '__all' && x1.bandwidth() >= 22) {
-        svg.append('g').selectAll('text').data(days.filter((x) => trVal(mt, g.v[x]) != null)).join('text').attr('class', 'v')
-          .attr('x', (x) => x0(x) + x1(mt.k) + x1.bandwidth() / 2).attr('y', (x) => yL(trVal(mt, g.v[x])) - 3).attr('text-anchor', 'middle').text((x) => fmtN(trVal(mt, g.v[x])));
-      }
-    });
-  }
-  lines.forEach((mt) => {
-    const y = mt.axis === 'R' ? yR : yL;
-    const pts = days.map((x) => [x0(x) + x0.bandwidth() / 2, trVal(mt, g.v[x])]).filter((p) => p[1] != null);
-    if (!pts.length) return;
-    const dpath = d3.line()(pts.map((p) => [p[0], y(p[1])]));
-    if (bars.length) svg.append('path').attr('d', dpath).attr('fill', 'none').attr('stroke', 'var(--color-panel)').attr('stroke-width', 5).attr('stroke-linejoin', 'round');
-    svg.append('path').attr('d', dpath).attr('fill', 'none').attr('stroke', dash.colors[mt.c]).attr('stroke-width', 2).attr('stroke-linejoin', 'round');
-    svg.append('g').selectAll('circle').data(pts).join('circle').attr('cx', (p) => p[0]).attr('cy', (p) => y(p[1])).attr('r', 2.6).attr('fill', dash.colors[mt.c]);
+  const bars = cfg.metrics;
+  const leftVals = [], rVals = [];
+  days.forEach((x) => cfg.metrics.forEach((mt) => { const v = trVal(mt, g.v[x]); if (v != null) (mt.axis === 'R' ? rVals : leftVals).push(v); }));
+  const maxL = d3.max(leftVals) || 1, maxR = rVals.length ? Math.max(d3.max(rVals), 0.05) : 1;
+  const x0 = d3.scaleBand(days, [mg.l, W - mg.r]).padding(0.18);
+  const yL = d3.scaleLinear([0, maxL], [H - mg.b, mg.t + 10]), yR = d3.scaleLinear([0, maxR], [H - mg.b, mg.t + 10]);
+  const yOf = (mt) => (mt.axis === 'R' ? yR : yL);
+  const x1 = d3.scaleBand(bars.map((mt) => mt.k), [0, x0.bandwidth()]).padding(bars.length > 2 ? 0.04 : 0.08);
+  // bars = the value on each day
+  bars.forEach((mt) => {
+    const y = yOf(mt);
+    svg.append('g').selectAll('rect').data(days).join('rect')
+      .attr('x', (x) => x0(x) + x1(mt.k)).attr('width', x1.bandwidth()).attr('rx', 1.5)
+      .attr('y', (x) => { const v = trVal(mt, g.v[x]); return v == null ? H - mg.b : y(v); })
+      .attr('height', (x) => { const v = trVal(mt, g.v[x]); return v == null ? 0 : Math.max(0, H - mg.b - y(v)); })
+      .attr('fill', dash.colors[mt.c]).attr('opacity', (x) => (x === DAY ? 0.95 : 0.6));
   });
+  const drawLabels = () => bars.forEach((mt) => {
+    const y = yOf(mt);
+    if (g.key === '__all' && x1.bandwidth() >= (mt.axis === 'R' ? 44 : 24)) {
+      svg.append('g').selectAll('text').data(days.filter((x) => trVal(mt, g.v[x]) != null)).join('text').attr('class', 'v')
+        .attr('x', (x) => x0(x) + x1(mt.k) + x1.bandwidth() / 2).attr('y', (x) => y(trVal(mt, g.v[x])) - 3).attr('text-anchor', 'middle')
+        .attr('paint-order', 'stroke').attr('stroke', 'var(--color-panel)').attr('stroke-width', 3)
+        .text((x) => (mt.fmt || fmtN)(trVal(mt, g.v[x])));
+    }
+  });
+  // trend line = straight best-fit line through the days that have data (dashed, same colour)
+  bars.forEach((mt) => {
+    const y = yOf(mt);
+    const pts = days.map((x, i) => [i, trVal(mt, g.v[x])]).filter((p) => p[1] != null);
+    if (pts.length < 2) return;
+    const n = pts.length, sx = d3.sum(pts, (p) => p[0]), sy = d3.sum(pts, (p) => p[1]);
+    const sxx = d3.sum(pts, (p) => p[0] * p[0]), sxy = d3.sum(pts, (p) => p[0] * p[1]), den = n * sxx - sx * sx;
+    const slope = den ? (n * sxy - sx * sy) / den : 0, icpt = (sy - slope * sx) / n;
+    const i0 = pts[0][0], i1 = pts[n - 1][0];
+    const cx = (i) => x0(days[i]) + x1(mt.k) + x1.bandwidth() / 2;
+    const clamp = (v) => Math.max(0, v);
+    const seg = [[cx(i0), y(clamp(icpt + slope * i0))], [cx(i1), y(clamp(icpt + slope * i1))]];
+    svg.append('path').attr('d', d3.line()(seg)).attr('stroke', 'var(--color-panel)').attr('stroke-width', 5).attr('fill', 'none').attr('stroke-linecap', 'round');
+    svg.append('path').attr('d', d3.line()(seg)).attr('stroke', dash.colors[mt.c]).attr('stroke-width', 2.2).attr('stroke-dasharray', '6 4').attr('fill', 'none').attr('stroke-linecap', 'round');
+  });
+  drawLabels();
   if (hasR) {
     svg.append('text').attr('x', W - 2).attr('y', yR(maxR) + 3).attr('text-anchor', 'end').text(d3.format('.0%')(maxR));
-    svg.append('text').attr('x', W - 2).attr('y', yR(minR)).attr('text-anchor', 'end').text(d3.format('.0%')(minR));
+    svg.append('text').attr('x', W - 2).attr('y', yR(0)).attr('text-anchor', 'end').text('0%');
   }
   const step = x0.bandwidth() < 16 ? 2 : 1, fmtL = d3.utcFormat(x0.bandwidth() < 34 ? '%-d' : '%-d %b');
   svg.append('g').selectAll('text').data(days.filter((x, i) => (days.length - 1 - i) % step === 0)).join('text')
